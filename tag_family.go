@@ -10,7 +10,8 @@ package main
 #include "apriltag/tagCustom48h12.h"
 #include "apriltag/tagStandard41h12.h"
 #include "apriltag/tagStandard52h13.h"
-#cgo LDFLAGS:  apriltag/libapriltag.a -lm
+#include "oldtags/tag36h10.h"
+#cgo LDFLAGS:  apriltag/libapriltag.a oldtags/liboldtags.a -lm
 */
 import "C"
 import (
@@ -21,7 +22,7 @@ import (
 )
 
 type TagFamily struct {
-	Codes          []int64
+	Codes          []uint64
 	NBits          int
 	LocationX      []int
 	LocationY      []int
@@ -35,7 +36,7 @@ type TagFamily struct {
 func newTagFamily(tf *C.apriltag_family_t, name string) *TagFamily {
 	ncodes := int(tf.ncodes)
 	nbits := int(tf.nbits)
-	var codes []int64
+	var codes []uint64
 	var bitX, bitY []int32
 
 	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&codes)))
@@ -52,7 +53,7 @@ func newTagFamily(tf *C.apriltag_family_t, name string) *TagFamily {
 	sliceHeaderY.Data = uintptr(unsafe.Pointer(tf.bit_y))
 
 	res := &TagFamily{
-		Codes:          append([]int64{}, codes...),
+		Codes:          append([]uint64{}, codes...),
 		Name:           name,
 		NBits:          nbits,
 		TotalWidth:     int(tf.total_width),
@@ -86,6 +87,10 @@ var familyFactory map[string]cAprilTagFamily
 
 func init() {
 	familyFactory = map[string]cAprilTagFamily{
+		"36h10": cAprilTagFamily{
+			Constructor: func() *C.apriltag_family_t { return C.tag36h10_create() },
+			Destructor:  func(f *C.apriltag_family_t) { C.tag36h10_destroy(f) },
+		},
 		"36h11": cAprilTagFamily{
 			Constructor: func() *C.apriltag_family_t { return C.tag36h11_create() },
 			Destructor:  func(f *C.apriltag_family_t) { C.tag36h11_destroy(f) },

@@ -6,7 +6,7 @@ import (
 	"math"
 )
 
-func DrawTag(drawer Drawer, tf *TagFamily, payload int64, x, y, size, angle float64, value *int) error {
+func DrawTag(drawer Drawer, tf *TagFamily, payload uint64, x, y, size, angle float64, value *int) error {
 
 	sizeInPX := tf.TotalWidth
 	pixelSize := drawer.ToDot(size / float64(sizeInPX))
@@ -44,8 +44,8 @@ func DrawTag(drawer Drawer, tf *TagFamily, payload int64, x, y, size, angle floa
 	offset := (tf.TotalWidth - tf.WidthAtBorder) / 2
 	drawer.DrawRectangle(pixelSize*offset, pixelSize*offset, tf.WidthAtBorder*pixelSize, tf.WidthAtBorder*pixelSize, colorIn)
 
-	for i := uint(0); i < uint(tf.NBits); i++ {
-		bit := (1 << (tf.NBits - 1 - i))
+	for i := uint64(0); i < uint64(tf.NBits); i++ {
+		bit := (uint64(1) << (uint64(tf.NBits) - 1 - i))
 
 		if tf.ReversedBorder == false && payload&bit == 0 {
 			continue
