@@ -91,7 +91,7 @@ func Execute() error {
 			break
 		}
 
-		DrawTag(drawer, family.BlackBorder, family.WhiteBorder, family.Size, family.Codes[i], x, y, opts.Size, angle, &i)
+		DrawTag(drawer, family, family.Codes[i], x, y, opts.Size, angle, &i)
 	}
 
 	return nil

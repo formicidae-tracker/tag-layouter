@@ -6,9 +6,9 @@ import (
 	"math"
 )
 
-func DrawTag(drawer Drawer, blackBorder, whiteBorder, codeSize int, payload int64, x, y, size, angle float64, value *int) error {
+func DrawTag(drawer Drawer, tf *TagFamily, payload int64, x, y, size, angle float64, value *int) error {
 
-	sizeInPX := codeSize + 2*blackBorder + 2*whiteBorder
+	sizeInPX := tf.TotalWidth
 	pixelSize := drawer.ToDot(size / float64(sizeInPX))
 
 	if pixelSize == 0.0 {
@@ -33,22 +33,27 @@ func DrawTag(drawer Drawer, blackBorder, whiteBorder, codeSize int, payload int6
 		drawer.DrawLine(x1, y1, x3, y3, 3, color.Black)
 		drawer.DrawLine(x2, y2, x3, y3, 3, color.Black)
 		drawer.Label(sizeInDot/2+hInDot/2, sizeInDot/2, size/3, fmt.Sprintf("%d", *value), color.Black)
-
 	}
 
-	drawer.DrawRectangle(0, 0, sizeInPX*pixelSize, sizeInPX*pixelSize, color.White)
+	colorOut := color.White
+	colorIn := color.Black
+	if tf.ReversedBorder == true {
+		colorOut, colorIn = colorIn, colorOut
+	}
+	drawer.DrawRectangle(0, 0, sizeInPX*pixelSize, sizeInPX*pixelSize, colorOut)
+	offset := (tf.TotalWidth - tf.WidthAtBorder) / 2
+	drawer.DrawRectangle(pixelSize*offset, pixelSize*offset, tf.WidthAtBorder*pixelSize, tf.WidthAtBorder*pixelSize, colorIn)
 
-	drawer.DrawRectangle(pixelSize*whiteBorder, pixelSize*whiteBorder, (sizeInPX-2*whiteBorder)*pixelSize, (sizeInPX-2*whiteBorder)*pixelSize, color.Black)
+	for i := uint(0); i < uint(tf.NBits); i++ {
+		bit := (1 << (tf.NBits - 1 - i))
 
-	offset := (whiteBorder + blackBorder) * pixelSize
-	for i := uint(0); i < uint(codeSize*codeSize); i++ {
-		j := int(i) % codeSize
-		k := (int(i) - j) / codeSize
-		if (1<<i)&payload == 0 {
+		if tf.ReversedBorder == false && payload&bit == 0 {
 			continue
 		}
-
-		drawer.DrawRectangle(offset+(codeSize-1-j)*pixelSize, offset+(codeSize-1-k)*pixelSize, pixelSize, pixelSize, color.White)
+		if tf.ReversedBorder == true && payload&bit != 0 {
+			continue
+		}
+		drawer.DrawRectangle((offset+tf.LocationX[i])*pixelSize, (offset+tf.LocationY[i])*pixelSize, pixelSize, pixelSize, colorOut)
 	}
 
 	return nil
