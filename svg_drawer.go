@@ -63,7 +63,7 @@ func (d *SVGDrawer) DrawLine(x1, y1, x2, y2, border int, c color.Color) {
 }
 
 func (d *SVGDrawer) Label(x, y int, height float64, label string, c color.Color) float64 {
-	d.SVG.Text(x, y, label, fmt.Sprintf("font-size:%d", d.ToDot(height)))
+	d.SVG.Text(x, y, label, fmt.Sprintf("font-size:%d;font-family:Roboto", d.ToDot(height)))
 	return 0
 
 }
@@ -77,4 +77,8 @@ const anInch = 25.4
 
 func (d *SVGDrawer) ToDot(v float64) int {
 	return int(v * d.dpi / anInch)
+}
+
+func (d *SVGDrawer) ToMM(v int) float64 {
+	return float64(v) * anInch / float64(d.dpi)
 }

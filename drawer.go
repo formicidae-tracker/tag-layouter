@@ -11,4 +11,5 @@ type Drawer interface {
 	DrawCircle(x, y, r, b int, c color.Color)
 	Close() error
 	ToDot(float64) int
+	ToMM(int) float64
 }
