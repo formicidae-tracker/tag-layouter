@@ -150,7 +150,14 @@ func Execute() error {
 			Height: opts.Height,
 		}
 	} else if opts.ColumnNumber != 0 && opts.ArenaNumber == 0 {
-		return fmt.Errorf("Column layouter is not yet implemented")
+		layouter = &ColumnLayouter{
+			Width:        opts.Width,
+			Height:       opts.Height,
+			Columns:      opts.ColumnNumber,
+			PaperBorder:  opts.PaperBorder,
+			FamilyMargin: opts.FamilyMargin,
+			TagBorder:    opts.TagBorder,
+		}
 	} else if opts.ColumnNumber != 0 && opts.ArenaNumber != 0 {
 		return fmt.Errorf("Please specify either a column or either an arena layout")
 	}
