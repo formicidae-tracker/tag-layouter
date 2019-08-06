@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"image/color"
 	"log"
 	"math"
-	"math/rand"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/jessevdk/go-flags"
 )
@@ -28,14 +28,99 @@ func Touches(points map[int]Point, toTest Point, radius float64) bool {
 }
 
 type Options struct {
-	File   string  `short:"f" long:"file" description:"File to output" required:"true"`
-	Size   float64 `short:"s" long:"size" description:"Tag Size" default:"1.6"`
-	Family string  `long:"family" description:"Family to use" default:"36h11"`
-	Number int     `short:"n" long:"number" description:"Number of tags" default:"20"`
-	Width  float64 `short:"W" long:"width" description:"Width to use" default:"210"`
-	Height float64 `short:"H" long:"height" description:"Height to use" default:"297"`
-	Border float64 `short:"b" long:"border" description:"Draw a border" default:"20.0"`
-	DPI    int     `short:"d" long:"dpi" description:"DPI to use" default:"2400"`
+	File          string   `short:"f" long:"file" description:"File to output" required:"true"`
+	FamilyAndSize []string `short:"t" long:"family-and-size" description:"Families and size to use. format: 'name:size:begin-end'"`
+	ColumnNumber  int      `long:"column-number" description:"Number of column to display multiple families" default:"0"`
+	TagBorder     float64  `long:"individual-tag-border" description:"border between tags in column layout" default:"0.2"`
+	FamilyMargin  float64  `long:"family-margin" description:"margin between families in mm" default:"2.0"`
+	ArenaNumber   int      `long:"arena-number" description:"Number of tags to display in an arena" default:"0"`
+	Width         float64  `short:"W" long:"width" description:"Width to use" default:"210"`
+	Height        float64  `short:"H" long:"height" description:"Height to use" default:"297"`
+	PaperBorder   float64  `long:"arena-border" description:"Draw a border" default:"20.0"`
+	DPI           int      `short:"d" long:"dpi" description:"DPI to use" default:"2400"`
+}
+
+type FamilyAndSize struct {
+	Family     *TagFamily
+	Size       float64
+	Begin, End int
+}
+
+func ExtractFamilyAndSizes(list []string) ([]FamilyAndSize, error) {
+	res := []FamilyAndSize{}
+	for _, fAndSize := range list {
+		fargs := strings.Split(fAndSize, ":")
+		if len(fargs) <= 1 {
+			return res, fmt.Errorf("invalid family specification '%s': need at list family and size in the form '<name>:<size>'", fAndSize)
+		}
+		if len(fargs) > 3 {
+			return res, fmt.Errorf("invalid family specification '%s':  expected '<name>:<size>:<range>'", fAndSize)
+		}
+		tf, err := GetFamily(fargs[0])
+		if err != nil {
+			return res, err
+		}
+		s, err := strconv.ParseFloat(fargs[1], 64)
+		if err != nil {
+			return res, err
+		}
+
+		if len(fargs) == 2 {
+			res = append(res, FamilyAndSize{
+				Family: tf,
+				Size:   s,
+				Begin:  0,
+				End:    len(tf.Codes),
+			})
+			continue
+		}
+
+		ranges := strings.Split(fargs[2], "-")
+		begin := -1
+		end := -1
+		if len(ranges) > 2 {
+			return res, fmt.Errorf("Only supports ranges XX XX- -XX XX-YY, got '%s'", fargs[2])
+		}
+		if len(ranges) == 1 {
+			idx, err := strconv.ParseInt(ranges[0], 10, 64)
+			if err != nil {
+				return res, err
+			}
+			begin = int(idx)
+			end = int(idx) + 1
+		}
+		if len(ranges[0]) == 0 {
+			begin = 0
+		} else {
+			idx, err := strconv.ParseInt(ranges[0], 10, 64)
+			if err != nil {
+				return res, err
+			}
+			if int(idx) >= len(tf.Codes) {
+				return res, fmt.Errorf("%d is out-of-range in %s (size:%d)'", idx, fargs[0], len(tf.Codes))
+			}
+			begin = int(idx)
+		}
+		if len(ranges[1]) == 0 {
+			end = len(tf.Codes)
+		} else {
+			idx, err := strconv.ParseInt(ranges[0], 10, 64)
+			if err != nil {
+				return res, err
+			}
+			if int(idx) >= len(tf.Codes) {
+				return res, fmt.Errorf("%d is out-of-range in %s (size:%d)'", idx, fargs[0], len(tf.Codes))
+			}
+			end = int(idx)
+		}
+		res = append(res, FamilyAndSize{
+			Family: tf,
+			Size:   s,
+			Begin:  begin,
+			End:    end,
+		})
+	}
+	return res, nil
 }
 
 func Execute() error {
@@ -50,52 +135,30 @@ func Execute() error {
 	}
 	defer drawer.Close()
 
-	family, err := GetFamily(opts.Family)
-
+	families, err := ExtractFamilyAndSizes(opts.FamilyAndSize)
 	if err != nil {
 		return err
 	}
 
-	set := map[int]Point{}
+	var layouter Layouter = nil
 
-	if opts.Border < 0 {
-		return fmt.Errorf("Border cannot be negative")
-	}
-
-	if opts.Border > 0.0 {
-		drawer.DrawRectangle(drawer.ToDot(opts.Border/2), drawer.ToDot(opts.Border/2), drawer.ToDot(opts.Width-opts.Border), drawer.ToDot(opts.Height-opts.Border), color.Gray{Y: 200})
-		drawer.DrawRectangle(drawer.ToDot(opts.Border), drawer.ToDot(opts.Border), drawer.ToDot(opts.Width-2*opts.Border), drawer.ToDot(opts.Height-2*opts.Border), color.White)
-	}
-
-	for i := 0; i < opts.Number; i++ {
-		angle := rand.Float64() * 360.0
-		idx := 0
-		for {
-			idx = rand.Intn(len(family.Codes) - 1)
-			if _, ok := set[idx]; ok == true {
-				continue
-			}
-			break
+	if opts.ArenaNumber != 0 && opts.ColumnNumber == 0 {
+		layouter = &ArenaLayouter{
+			Border: opts.PaperBorder,
+			Number: opts.ArenaNumber,
+			Width:  opts.Width,
+			Height: opts.Height,
 		}
-		x := 0.0
-		y := 0.0
-
-		for {
-			x = rand.Float64()*(opts.Width-2*opts.Border-2*opts.Size) + opts.Border + opts.Size
-			y = rand.Float64()*(opts.Height-2*opts.Border-2*opts.Size) + opts.Border + opts.Size
-			p := Point{x, y}
-			if Touches(set, p, opts.Size*3) == true {
-				continue
-			}
-			set[idx] = p
-			break
-		}
-
-		DrawTag(drawer, family, family.Codes[i], x, y, opts.Size, angle, &i)
+	} else if opts.ColumnNumber != 0 && opts.ArenaNumber == 0 {
+		return fmt.Errorf("Column layouter is not yet implemented")
+	} else if opts.ColumnNumber != 0 && opts.ArenaNumber != 0 {
+		return fmt.Errorf("Please specify either a column or either an arena layout")
+	}
+	if layouter == nil {
+		return fmt.Errorf("Please specify a layout with either --arena-number or -- col-number")
 	}
 
-	return nil
-
+	return layouter.Layout(drawer, families)
 }
 
 func main() {

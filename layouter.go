@@ -1,3 +1,5 @@
 package main
 
-type Layouter func()
+type Layouter interface {
+	Layout(drawer Drawer, families []FamilyAndSize) error
+}
