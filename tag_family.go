@@ -26,6 +26,7 @@ type TagFamily struct {
 	NBits          int
 	LocationX      []int
 	LocationY      []int
+	Inside         []bool
 	Name           string
 	Hamming        int
 	TotalWidth     int
@@ -62,11 +63,23 @@ func newTagFamily(tf *C.apriltag_family_t, name string) *TagFamily {
 		Hamming:        int(tf.h),
 		LocationX:      nil,
 		LocationY:      nil,
+		Inside:         nil,
 	}
 	for i := 0; i < res.NBits; i++ {
-		res.LocationX = append(res.LocationX, int(bitX[i]))
-		res.LocationY = append(res.LocationY, int(bitY[i]))
+		x := int(bitX[i])
+		y := int(bitY[i])
+		res.LocationX = append(res.LocationX, x)
+		res.LocationY = append(res.LocationY, y)
+		inside := true
+		if x < 0 || x >= res.WidthAtBorder {
+			inside = false
+		}
+		if y < 0 || y >= res.WidthAtBorder {
+			inside = false
+		}
+		res.Inside = append(res.Inside, inside)
 	}
+
 	return res
 }
 

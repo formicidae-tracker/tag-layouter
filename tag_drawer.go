@@ -46,14 +46,19 @@ func DrawTag(drawer Drawer, tf *TagFamily, payload uint64, x, y, size, angle flo
 
 	for i := uint64(0); i < uint64(tf.NBits); i++ {
 		bit := (uint64(1) << (uint64(tf.NBits) - 1 - i))
+		isSet := payload&bit != 0
+		backgroundIsBlack := tf.Inside[i] != tf.ReversedBorder
 
-		if tf.ReversedBorder == false && payload&bit == 0 {
+		if isSet != backgroundIsBlack {
 			continue
 		}
-		if tf.ReversedBorder == true && payload&bit != 0 {
-			continue
+
+		colorPixel := color.White
+		if backgroundIsBlack == false {
+			colorPixel = color.Black
 		}
-		drawer.DrawRectangle((offset+tf.LocationX[i])*pixelSize, (offset+tf.LocationY[i])*pixelSize, pixelSize, pixelSize, colorOut)
+
+		drawer.DrawRectangle((offset+tf.LocationX[i])*pixelSize, (offset+tf.LocationY[i])*pixelSize, pixelSize, pixelSize, colorPixel)
 	}
 
 	return nil
