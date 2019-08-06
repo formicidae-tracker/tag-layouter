@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -36,7 +37,7 @@ type Options struct {
 	ArenaNumber   int      `long:"arena-number" description:"Number of tags to display in an arena" default:"0"`
 	Width         float64  `short:"W" long:"width" description:"Width to use" default:"210"`
 	Height        float64  `short:"H" long:"height" description:"Height to use" default:"297"`
-	PaperBorder   float64  `long:"arena-border" description:"Draw a border" default:"20.0"`
+	PaperBorder   float64  `long:"paper-border" description:"Border for arena or paper" default:"20.0"`
 	DPI           int      `short:"d" long:"dpi" description:"DPI to use" default:"2400"`
 }
 
@@ -88,30 +89,32 @@ func ExtractFamilyAndSizes(list []string) ([]FamilyAndSize, error) {
 			}
 			begin = int(idx)
 			end = int(idx) + 1
-		}
-		if len(ranges[0]) == 0 {
-			begin = 0
+
 		} else {
-			idx, err := strconv.ParseInt(ranges[0], 10, 64)
-			if err != nil {
-				return res, err
+			if len(ranges[0]) == 0 {
+				begin = 0
+			} else {
+				idx, err := strconv.ParseInt(ranges[0], 10, 64)
+				if err != nil {
+					return res, err
+				}
+				if int(idx) >= len(tf.Codes) {
+					return res, fmt.Errorf("%d is out-of-range in %s (size:%d)'", idx, fargs[0], len(tf.Codes))
+				}
+				begin = int(idx)
 			}
-			if int(idx) >= len(tf.Codes) {
-				return res, fmt.Errorf("%d is out-of-range in %s (size:%d)'", idx, fargs[0], len(tf.Codes))
+			if len(ranges[1]) == 0 {
+				end = len(tf.Codes)
+			} else {
+				idx, err := strconv.ParseInt(ranges[0], 10, 64)
+				if err != nil {
+					return res, err
+				}
+				if int(idx) >= len(tf.Codes) {
+					return res, fmt.Errorf("%d is out-of-range in %s (size:%d)'", idx, fargs[0], len(tf.Codes))
+				}
+				end = int(idx)
 			}
-			begin = int(idx)
-		}
-		if len(ranges[1]) == 0 {
-			end = len(tf.Codes)
-		} else {
-			idx, err := strconv.ParseInt(ranges[0], 10, 64)
-			if err != nil {
-				return res, err
-			}
-			if int(idx) >= len(tf.Codes) {
-				return res, fmt.Errorf("%d is out-of-range in %s (size:%d)'", idx, fargs[0], len(tf.Codes))
-			}
-			end = int(idx)
 		}
 		res = append(res, FamilyAndSize{
 			Family: tf,
@@ -129,7 +132,13 @@ func Execute() error {
 		return err
 	}
 
-	drawer, err := NewSVGDrawer(opts.File, opts.Width, opts.Height, opts.DPI)
+	var drawer Drawer = nil
+	var err error
+	if filepath.Ext(opts.File) == ".svg" {
+		drawer, err = NewSVGDrawer(opts.File, opts.Width, opts.Height, opts.DPI)
+	} else {
+		drawer, err = NewImageDrawer(opts.File, opts.Width, opts.Height, opts.DPI)
+	}
 	if err != nil {
 		return err
 	}

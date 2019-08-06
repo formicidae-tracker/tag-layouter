@@ -13,7 +13,7 @@ import (
 type toDotConverter func(float64) int
 
 type SVGDrawer struct {
-	dpi float64
+	Dotter
 	f   io.Closer
 	SVG *svg.SVG
 }
@@ -25,9 +25,9 @@ func NewSVGDrawer(filepath string, width, height float64, DPI int) (Drawer, erro
 	}
 
 	res := &SVGDrawer{
-		dpi: float64(DPI),
-		f:   f,
-		SVG: svg.New(f),
+		Dotter: Dotter{float64(DPI)},
+		f:      f,
+		SVG:    svg.New(f),
 	}
 
 	res.SVG.Start(res.ToDot(width), res.ToDot(height))
@@ -63,7 +63,7 @@ func (d *SVGDrawer) DrawLine(x1, y1, x2, y2, border int, c color.Color) {
 }
 
 func (d *SVGDrawer) Label(x, y int, height float64, label string, c color.Color) float64 {
-	d.SVG.Text(x, y, label, fmt.Sprintf("font-size:%d;font-family:Roboto", d.ToDot(height)))
+	d.SVG.Text(x, y+d.ToDot(height), label, fmt.Sprintf("font-size:%d;font-family:Roboto", d.ToDot(height)))
 	return 0
 
 }
@@ -71,14 +71,4 @@ func (d *SVGDrawer) Label(x, y int, height float64, label string, c color.Color)
 func (d *SVGDrawer) DrawCircle(x, y, radius, border int, c color.Color) {
 	r, g, b, _ := c.RGBA()
 	d.SVG.Circle(x, y, radius, fmt.Sprintf("stroke:rgb(%d,%d,%d);fill:none;stroke-width:%d", r/256, g/256, b/256, border))
-}
-
-const anInch = 25.4
-
-func (d *SVGDrawer) ToDot(v float64) int {
-	return int(v * d.dpi / anInch)
-}
-
-func (d *SVGDrawer) ToMM(v int) float64 {
-	return float64(v) * anInch / float64(d.dpi)
 }
