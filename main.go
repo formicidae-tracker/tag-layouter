@@ -33,6 +33,7 @@ type Options struct {
 	FamilyAndSize []string `short:"t" long:"family-and-size" description:"Families and size to use. format: 'name:size:begin-end'"`
 	ColumnNumber  int      `long:"column-number" description:"Number of column to display multiple families" default:"0"`
 	TagBorder     float64  `long:"individual-tag-border" description:"border between tags in column layout" default:"0.2"`
+	CutLineRatio  float64  `long:"cut-line-ratio" description:"ratio of the border between tags that should be a cut line" default:"0.0"`
 	FamilyMargin  float64  `long:"family-margin" description:"margin between families in mm" default:"2.0"`
 	ArenaNumber   int      `long:"arena-number" description:"Number of tags to display in an arena" default:"0"`
 	Width         float64  `short:"W" long:"width" description:"Width to use" default:"210"`
@@ -162,10 +163,11 @@ func Execute() error {
 		layouter = &ColumnLayouter{
 			Width:        opts.Width,
 			Height:       opts.Height,
-			Columns:      opts.ColumnNumber,
+			NColumns:     opts.ColumnNumber,
 			PaperBorder:  opts.PaperBorder,
 			FamilyMargin: opts.FamilyMargin,
 			TagBorder:    opts.TagBorder,
+			CutLine:      opts.CutLineRatio,
 		}
 	} else if opts.ColumnNumber != 0 && opts.ArenaNumber != 0 {
 		return fmt.Errorf("Please specify either a column or either an arena layout")
@@ -174,7 +176,11 @@ func Execute() error {
 		return fmt.Errorf("Please specify a layout with either --arena-number or -- col-number")
 	}
 
-	return layouter.Layout(drawer, families)
+	err = layouter.Layout(drawer, families)
+	if err != nil {
+		log.Fatalf("Cannot layout : %s", err)
+	}
+	return nil
 }
 
 func main() {

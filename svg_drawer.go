@@ -62,8 +62,8 @@ func (d *SVGDrawer) DrawLine(x1, y1, x2, y2, border int, c color.Color) {
 	d.SVG.Line(x1, y1, x2, y2, fmt.Sprintf("stroke:rgb(%d,%d,%d);stroke-width:%d", r/256, g/256, b/256, border))
 }
 
-func (d *SVGDrawer) Label(x, y int, height float64, label string, c color.Color) float64 {
-	d.SVG.Text(x, y+d.ToDot(height), label, fmt.Sprintf("font-size:%d;font-family:Roboto", d.ToDot(height)))
+func (d *SVGDrawer) Label(x, y int, height int, label string, c color.Color) float64 {
+	d.SVG.Text(x, y+height, label, fmt.Sprintf("font-size:%d;font-family:Roboto", height))
 	return 0
 
 }

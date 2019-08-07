@@ -138,13 +138,6 @@ func min(a, b int) int {
 	return b
 }
 
-func max(a, b int) int {
-	if a < b {
-		return b
-	}
-	return a
-}
-
 func (d *ImageDrawer) DrawLine(x1, y1, x2, y2, b int, c color.Color) {
 	xo, yo := d.Offsets()
 	if abs(x1-x2) > (y1 - y2) {
@@ -206,11 +199,11 @@ const (
 	PtInMM float64 = 0.352778
 )
 
-func (d *ImageDrawer) Label(x, y int, height float64, label string, c color.Color) float64 {
+func (d *ImageDrawer) Label(x, y int, height int, label string, c color.Color) float64 {
 	xo, yo := d.Offsets()
 
 	d.fd.SetSrc(&image.Uniform{c})
-	size := height / PtInMM
+	size := d.ToMM(height) / PtInMM
 	d.fd.SetFontSize(size)
 	pt := freetype.Pt(x+xo, y+yo+int(d.fd.PointToFixed(size)>>6))
 
@@ -219,7 +212,7 @@ func (d *ImageDrawer) Label(x, y int, height float64, label string, c color.Colo
 	// Binarizing rasterized font
 	for i := pt.X.Ceil() + xo; i < advance.X.Ceil()+xo; i++ {
 		for j := y + yo; j <= pt.Y.Ceil()+1+yo; j++ {
-			if d.data.GrayAt(i, j).Y < 127 {
+			if d.data.GrayAt(i, j).Y < 200 {
 				d.data.Set(i, j, color.Black)
 			} else {
 				d.data.Set(i, j, color.White)

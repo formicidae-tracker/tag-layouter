@@ -9,11 +9,12 @@ make
 ./tag-layouter -f test.png \
 			   --column-number 4 \
 			   -W 260 \
-			   -H 400 \
+			   -H 383 \
+			   --cut-line-ratio 0.1 \
 			   --individual-tag-border 0.2 \
 			   --family-margin 4.0 \
-			   --dpi 2400 \
-			   --paper-border 5 \
+			   --dpi 8000 \
+			   --paper-border 4 \
 			   -t 36h10:2.0:1- \
 			   -t 36h10:0.6:1- \
 			   -t 36h10:0.8:1- \

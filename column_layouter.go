@@ -11,138 +11,285 @@ import (
 type ColumnLayouter struct {
 	Width        float64
 	Height       float64
-	Columns      int
+	NColumns     int
 	FamilyMargin float64
 	TagBorder    float64
 	PaperBorder  float64
+	CutLine      float64
 	drawer       Drawer
 }
 
-func (c *ColumnLayouter) PerfectPixelSizeMM(s float64, b float64, totalWidth int) (tagSize float64, borderSize float64) {
-	perfectPixelSize := c.drawer.ToDot(s / float64(totalWidth))
-	tagSize = c.drawer.ToMM(perfectPixelSize) * float64(totalWidth)
-	borderSize = c.drawer.ToMM(int(math.Round(float64(totalWidth)*b)) * perfectPixelSize)
-	return tagSize, borderSize
+func (c *ColumnLayouter) PerfectPixelSizeMM(size float64, border float64, cutline float64, totalWidth int) (tagSizeDot int, borderSizeDot int, cutLineSizeDot int) {
+	perfectPixelSize := c.drawer.ToDot(size / float64(totalWidth))
+	tagSizeDot = perfectPixelSize * totalWidth
+	borderSizeDot = int(math.Round(float64(totalWidth)*border)) * perfectPixelSize
+
+	cutLineSizeDot = int(math.Round(float64(borderSizeDot) * cutline))
+	if cutline != 0.0 {
+		if cutLineSizeDot == 0 {
+			cutLineSizeDot = 1
+		}
+		if (borderSizeDot-cutLineSizeDot)%2 == 1 {
+			borderSizeDot += 1
+		}
+	}
+	//	log.Printf("pixel: %d; tag: %d, border: %d, cut %d", perfectPixelSize, perfectPixelSize*totalWidth, borderSizeDot, cutLineSizeDot)
+
+	return tagSizeDot, borderSizeDot, cutLineSizeDot
 }
 
 func (f *FamilyAndSize) FamilyLabel() string {
 	return fmt.Sprintf("%s %.2fMM", f.Family.Name, f.Size)
 }
 
-func (c *ColumnLayouter) FamilyHeight(f FamilyAndSize, columnWidth float64) float64 {
-	actualTagWidth, actualBorderWidth := c.PerfectPixelSizeMM(f.Size, c.TagBorder, f.Family.TotalWidth)
-	nbSlots := f.End - f.Begin - 1 + len(f.FamilyLabel())*2/3
+type PlacedFamily struct {
+	FamilyAndSize
+	Height int
+	Width  int
+	X      int
+	Y      int
 
-	nbTagsPerRow := int(math.Floor(columnWidth / (actualTagWidth + actualBorderWidth)))
+	ActualTagWidth    int
+	ActualBorderWidth int
+	CutLineWidth      int
+	NTagsPerRow       int
+	Skips             int
+}
+
+func (c *ColumnLayouter) ComputeFamilySize(f FamilyAndSize, columnWidthDot int) PlacedFamily {
+	actualTagWidth, actualBorderWidth, cutlineWidth := c.PerfectPixelSizeMM(f.Size, c.TagBorder, c.CutLine, f.Family.TotalWidth)
+	skips := len(f.FamilyLabel())*1/2 + 1
+	nbSlots := f.End - f.Begin - 1 + skips
+
+	nbTagsPerRow := columnWidthDot / (actualTagWidth + actualBorderWidth)
 	nbRows := nbSlots / nbTagsPerRow
 	if nbSlots%nbTagsPerRow != 0 {
 		nbRows += 1
 	}
-	return float64(nbRows)*(actualTagWidth+actualBorderWidth) - actualBorderWidth
+
+	height := nbRows*(actualTagWidth+actualBorderWidth) - actualBorderWidth
+	width := 0
+	if nbRows > 1 {
+		width = columnWidthDot
+	} else {
+		width = nbSlots*(actualTagWidth+actualBorderWidth) - actualBorderWidth
+	}
+
+	return PlacedFamily{
+		FamilyAndSize:     f,
+		Height:            height,
+		Width:             width,
+		X:                 0,
+		Y:                 0,
+		ActualTagWidth:    actualTagWidth,
+		ActualBorderWidth: actualBorderWidth,
+		CutLineWidth:      cutlineWidth,
+		NTagsPerRow:       nbTagsPerRow,
+		Skips:             skips,
+	}
 }
 
-type FamilyWithHeight struct {
-	FamilyAndSize
-	Height float64
-}
+type PlacedFamilyListByHeight []PlacedFamily
+type PlacedFamilyListByWidth []PlacedFamily
 
-type FamilyWithHeightList []FamilyWithHeight
-
-func (fhs FamilyWithHeightList) Len() int {
+func (fhs PlacedFamilyListByHeight) Len() int {
 	return len(fhs)
 }
 
-func (fhs FamilyWithHeightList) Less(i, j int) bool {
+func (fhs PlacedFamilyListByWidth) Len() int {
+	return len(fhs)
+}
+
+func (fhs PlacedFamilyListByHeight) Less(i, j int) bool {
 	return fhs[i].Height < fhs[j].Height
 }
 
-func (fhs FamilyWithHeightList) Swap(i, j int) {
+func (fhs PlacedFamilyListByWidth) Less(i, j int) bool {
+	return fhs[i].Width < fhs[j].Width
+}
+
+func (fhs PlacedFamilyListByHeight) Swap(i, j int) {
 	fhs[i], fhs[j] = fhs[j], fhs[i]
 }
 
-func (c *ColumnLayouter) LayoutOne(xOffset, yOffset float64, f FamilyWithHeight, columnWidth float64) {
+func (fhs PlacedFamilyListByWidth) Swap(i, j int) {
+	fhs[i], fhs[j] = fhs[j], fhs[i]
+}
 
-	label := f.FamilyLabel()
-	actualTagWidth, actualBorderWidth := c.PerfectPixelSizeMM(f.Size, c.TagBorder, f.Family.TotalWidth)
+func (c *ColumnLayouter) LayoutOne(pf PlacedFamily) {
+	label := pf.FamilyLabel()
+	actualSizeMM := c.drawer.ToMM(pf.ActualTagWidth)
 	log.Printf("%s:%.2fmm actual size: %.2f; error: %.2f%%",
-		f.Family.Name,
-		f.Size,
-		actualTagWidth,
-		math.Abs(actualTagWidth-f.Size)/f.Size*100)
-	nbTagsPerRow := int(math.Floor(columnWidth / (actualTagWidth + actualBorderWidth)))
+		pf.Family.Name,
+		pf.Size,
+		actualSizeMM,
+		math.Abs(actualSizeMM-pf.Size)/pf.Size*100)
 
-	skips := len(label) * 2 / 3
+	ix := pf.Skips % pf.NTagsPerRow
+	iy := pf.Skips / pf.NTagsPerRow
 
-	ix := skips % nbTagsPerRow
-	iy := skips / nbTagsPerRow
-	for i := f.Begin; i < f.End; i++ {
-		x := float64(ix)*(actualTagWidth+actualBorderWidth) + xOffset
-		y := float64(iy)*(actualTagWidth+actualBorderWidth) + yOffset
-		DrawTag(c.drawer, f.Family, f.Family.Codes[i], x, y, f.Size, 0, nil)
+	cutLinePos := (pf.ActualBorderWidth - pf.CutLineWidth) / 2
+	isFirst := true
+	for i := pf.Begin; i < pf.End; i++ {
+		x := ix*(pf.ActualTagWidth+pf.ActualBorderWidth) + pf.X
+		y := iy*(pf.ActualTagWidth+pf.ActualBorderWidth) + pf.Y
+		DrawTagDot(c.drawer, pf.Family, pf.Family.Codes[i], x, y, pf.ActualTagWidth)
 		ix += 1
-		if ix >= nbTagsPerRow {
+		if ix >= pf.NTagsPerRow {
 			ix = 0
 			iy += 1
 		}
-	}
-	c.drawer.Label(c.drawer.ToDot(xOffset), c.drawer.ToDot(yOffset+actualTagWidth-actualBorderWidth/2), actualTagWidth, label, color.RGBA{0xff, 00, 00, 0xff})
+		if pf.CutLineWidth == 0 {
+			continue
+		}
 
+		c.drawer.DrawRectangle(x+pf.ActualTagWidth+cutLinePos,
+			y,
+			pf.CutLineWidth,
+			pf.ActualTagWidth,
+			color.Black)
+
+		c.drawer.DrawRectangle(x,
+			y+pf.ActualTagWidth+cutLinePos,
+			pf.ActualTagWidth,
+			pf.CutLineWidth,
+			color.Black)
+
+		if ix == 1 || isFirst == true {
+			isFirst = false
+			c.drawer.DrawRectangle(x-pf.CutLineWidth-cutLinePos,
+				y,
+				pf.CutLineWidth,
+				pf.ActualTagWidth,
+				color.Black)
+		}
+
+		if iy == 0 || iy == 1 && ix <= pf.Skips {
+			c.drawer.DrawRectangle(x,
+				y-cutLinePos-pf.CutLineWidth,
+				pf.ActualTagWidth,
+				pf.CutLineWidth,
+				color.Black)
+		}
+
+	}
+	c.drawer.Label(pf.X, pf.Y, pf.ActualTagWidth, label, color.RGBA{0xff, 00, 00, 0xff})
+
+}
+
+func max(a, b int) int {
+	if a < b {
+		return b
+	}
+	return a
 }
 
 func (c *ColumnLayouter) Layout(drawer Drawer, families []FamilyAndSize) error {
 	c.drawer = drawer
-	if c.Columns < 1 {
+	if c.NColumns < 1 {
 		return fmt.Errorf("Invalid number of column")
 	}
 
-	c.FamilyMargin = drawer.ToMM(drawer.ToDot(c.FamilyMargin))
-	c.PaperBorder = drawer.ToMM(drawer.ToDot(c.PaperBorder))
+	familyMarginDot := drawer.ToDot(c.FamilyMargin)
+	paperBorderDot := drawer.ToDot(c.PaperBorder)
 
-	c.drawer.DrawRectangle(0, 0, c.drawer.ToDot(c.Width), c.drawer.ToDot(c.Height), color.White)
+	columnWidthDot := (drawer.ToDot(c.Width) - 2*paperBorderDot - familyMarginDot*(c.NColumns-1)) / c.NColumns
 
-	columnWidth := (c.Width - 2*c.PaperBorder - c.FamilyMargin*float64(c.Columns-1)) / float64(c.Columns)
-	columnWidth = drawer.ToMM(drawer.ToDot(columnWidth))
-	columnHeight := c.Height - 2*c.PaperBorder
+	columnHeightDot := drawer.ToDot(c.Height) - 2*paperBorderDot
 
-	cFamilies := []FamilyWithHeight{}
-
+	placedFamiliesFullWidth := []PlacedFamily{}
+	placedFamiliesIncompleteWidth := []PlacedFamily{}
 	for _, f := range families {
-		h := c.FamilyHeight(f, columnWidth)
-		cFamilies = append(cFamilies, FamilyWithHeight{
-			FamilyAndSize: f,
-			Height:        h,
-		})
+		pf := c.ComputeFamilySize(f, columnWidthDot)
+		if pf.Width < columnWidthDot {
+			placedFamiliesIncompleteWidth = append(placedFamiliesIncompleteWidth, pf)
+		} else {
+			placedFamiliesFullWidth = append(placedFamiliesFullWidth, pf)
+		}
 	}
-	sort.Sort(sort.Reverse(FamilyWithHeightList(cFamilies)))
-	columns := make([][]FamilyWithHeight, c.Columns)
 
-	for _, fh := range cFamilies {
+	sort.Sort(sort.Reverse(PlacedFamilyListByHeight(placedFamiliesFullWidth)))
+	sort.Sort(PlacedFamilyListByWidth(placedFamiliesIncompleteWidth))
+
+	type Column struct {
+		Families      []PlacedFamily
+		XOffset       int
+		Width         int
+		Height        int
+		LastRowHeight int
+	}
+	columns := make([]Column, c.NColumns)
+	for i, _ := range columns {
+		columns[i].XOffset = i*(columnWidthDot+familyMarginDot) + paperBorderDot
+		columns[i].Width = 0
+		columns[i].Height = 0
+		columns[i].LastRowHeight = 0
+	}
+
+	for _, pf := range placedFamiliesFullWidth {
 		fitted := false
 		for idxCol, col := range columns {
-			height := 0.0
-			for _, fhc := range col {
-				height += fhc.Height + c.FamilyMargin
-			}
-			if fh.Height+height > columnHeight {
+			if (pf.Height + col.Height + familyMarginDot) > columnHeightDot {
 				continue
 			}
-			columns[idxCol] = append(columns[idxCol], fh)
+			//			log.Printf("Placing %s in %d %d position", pf.FamilyLabel(), idxCol, len(col.Families))
+			pf.X = col.XOffset
+			pf.Y = col.Height + familyMarginDot
+
+			columns[idxCol].Families = append(columns[idxCol].Families, pf)
+			columns[idxCol].Height += pf.Height + familyMarginDot
 			fitted = true
 			break
 		}
 		if fitted == false {
-			return fmt.Errorf("Could not fill %s:%.2f:%d-%d in layout", fh.Family.Name, fh.Size, fh.Begin, fh.End)
+			return fmt.Errorf("Could not fill %s:%.2f:%d-%d in layout", pf.Family.Name, pf.Size, pf.Begin, pf.End)
 		}
 	}
 
-	x := c.PaperBorder
-	for _, column := range columns {
-		y := c.PaperBorder
-		for _, f := range column {
-			c.LayoutOne(x, y, f, columnWidth)
-			y += f.Height + c.FamilyMargin
+	for _, pf := range placedFamiliesIncompleteWidth {
+		fitted := false
+		for idxCol, _ := range columns {
+			if (pf.Height + columns[idxCol].Height + familyMarginDot) > columnHeightDot {
+				//not fitting in height anyway
+				continue
+			}
+			//if we are building a new line
+			//check if it fits on the same line
+			if (pf.Width + columns[idxCol].Width) > columnWidthDot {
+				//no so we terminate the line
+				columns[idxCol].Width = 0
+				columns[idxCol].Height = columns[idxCol].LastRowHeight
+				columns[idxCol].LastRowHeight = 0
+				//we recheck if we can be put in height
+				if pf.Height+columns[idxCol].Height+familyMarginDot > columnHeightDot {
+					continue
+				}
+			}
+
+			//			log.Printf("Placing small %s in %d %d position", pf.FamilyLabel(), idxCol, len(columns[idxCol].Families))
+
+			pf.X = columns[idxCol].XOffset + columns[idxCol].Width
+			pf.Y = columns[idxCol].Height + familyMarginDot
+
+			columns[idxCol].Families = append(columns[idxCol].Families, pf)
+			columns[idxCol].Width += pf.Width + familyMarginDot
+			columns[idxCol].LastRowHeight = max(columns[idxCol].LastRowHeight, columns[idxCol].Height+familyMarginDot+pf.Height)
+			fitted = true
+			break
 		}
-		x += columnWidth + c.FamilyMargin
+		if fitted == false {
+			return fmt.Errorf("Could not fill %s:%.2f:%d-%d in layout", pf.Family.Name, pf.Size, pf.Begin, pf.End)
+		}
+	}
+
+	log.Printf("Filling background")
+	c.drawer.DrawRectangle(0, 0, c.drawer.ToDot(c.Width), c.drawer.ToDot(c.Height), color.White)
+	log.Printf("Done")
+
+	for _, column := range columns {
+		for _, pf := range column.Families {
+			c.LayoutOne(pf)
+		}
 	}
 
 	return nil
