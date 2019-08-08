@@ -21,8 +21,17 @@ type ColumnLayouter struct {
 
 func (c *ColumnLayouter) PerfectPixelSizeMM(size float64, border float64, cutline float64, totalWidth int) (tagSizeDot int, borderSizeDot int, cutLineSizeDot int) {
 	perfectPixelSize := c.drawer.ToDot(size / float64(totalWidth))
+	//check if a little bit bigger is not better
+	errors := []float64{
+		math.Abs(c.drawer.ToMM(perfectPixelSize*totalWidth) - size),
+		math.Abs(c.drawer.ToMM((perfectPixelSize+1)*totalWidth) - size),
+	}
+	if errors[1] < errors[0] {
+		perfectPixelSize += 1
+	}
+
 	tagSizeDot = perfectPixelSize * totalWidth
-	borderSizeDot = int(math.Round(float64(totalWidth)*border)) * perfectPixelSize
+	borderSizeDot = int(math.Round(float64(tagSizeDot) * border))
 
 	cutLineSizeDot = int(math.Round(float64(borderSizeDot) * cutline))
 	if cutline != 0.0 {
