@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
 
 type Range struct {
 	Begin, End int
@@ -17,55 +21,60 @@ func (r Range) String() string {
 	return fmt.Sprintf("%d-%d", r.Begin, r.End)
 }
 
-func ExtractRanges(s string) ([]Range, error) {
-	// 	ranges := strings.Split(fargs[2], "-")
-	// 	begin := -1
-	// 	end := -1
-	// 	if len(ranges) > 2 {
-	// 		return res, fmt.Errorf("Only supports ranges XX XX- -XX XX-YY, got '%s'", fargs[2])
-	// 	}
-	// 	if len(ranges) == 1 {
-	// 		idx, err := strconv.ParseInt(ranges[0], 10, 64)
-	// 		if err != nil {
-	// 			return res, err
-	// 		}
-	// 		begin = int(idx)
-	// 		end = int(idx) + 1
+func ExtractRange(s string) (Range, error) {
+	ranges := strings.Split(s, "-")
+	if len(ranges) > 2 {
+		return Range{}, fmt.Errorf("Only supports ranges XX XX- -XX XX-YY, got '%s'", s)
+	}
+	if len(ranges) == 1 {
+		idx, err := strconv.ParseInt(ranges[0], 10, 64)
+		if err != nil {
+			return Range{}, err
+		}
+		return Range{Begin: int(idx), End: int(idx + 1)}, nil
 
-	// 	} else {
-	// 		if len(ranges[0]) == 0 {
-	// 			begin = 0
-	// 		} else {
-	// 			idx, err := strconv.ParseInt(ranges[0], 10, 64)
-	// 			if err != nil {
-	// 				return res, err
-	// 			}
-	// 			if int(idx) >= len(tf.Codes) {
-	// 				return res, fmt.Errorf("%d is out-of-range in %s (size:%d)'", idx, fargs[0], len(tf.Codes))
-	// 			}
-	// 			begin = int(idx)
-	// 		}
-	// 		if len(ranges[1]) == 0 {
-	// 			end = len(tf.Codes)
-	// 		} else {
-	// 			idx, err := strconv.ParseInt(ranges[0], 10, 64)
-	// 			if err != nil {
-	// 				return res, err
-	// 			}
-	// 			if int(idx) >= len(tf.Codes) {
-	// 				return res, fmt.Errorf("%d is out-of-range in %s (size:%d)'", idx, fargs[0], len(tf.Codes))
-	// 			}
-	// 			end = int(idx)
-	// 		}
-	// 	}
-	// 	res = append(res, FamilyAndSize{
-	// 		Family: tf,
-	// 		Size:   s,
-	// 		Begin:  begin,
-	// 		End:    end,
-	// 	})
-	// }
-	return nil, fmt.Errorf("not yet implemented")
+	}
+	begin := -1
+	end := -1
+	if len(ranges[0]) == 0 {
+		begin = 0
+	} else {
+		idx, err := strconv.ParseInt(ranges[0], 10, 64)
+		if err != nil {
+			return Range{}, err
+		}
+		begin = int(idx)
+	}
+	if len(ranges[1]) == 0 {
+		end = -1
+	} else {
+		idx, err := strconv.ParseInt(ranges[1], 10, 64)
+		if err != nil {
+			return Range{}, err
+		}
+		end = int(idx)
+	}
+	return Range{Begin: begin, End: end}, nil
+}
+
+func ExtractRanges(s string) ([]Range, error) {
+	rangesStr := strings.Split(s, ";")
+	if len(rangesStr) == 1 && len(rangesStr[0]) == 0 {
+		return nil, nil
+	}
+	var res []Range
+	for _, rStr := range rangesStr {
+		if len(rStr) == 0 {
+			continue
+		}
+		r, err := ExtractRange(rStr)
+		if err != nil {
+			return res, err
+		}
+		res = append(res, r)
+	}
+
+	return res, nil
 }
 
 type FamilyBlock struct {

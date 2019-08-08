@@ -79,6 +79,21 @@ func ExtractFamilyAndSizes(list []string) ([]FamilyBlock, error) {
 		if err != nil {
 			return res, err
 		}
+		if len(ranges) == 0 {
+			return res, fmt.Errorf("Range for '%s' cannot be empty", fAndSize)
+		}
+		for i, r := range ranges {
+			if r.Begin >= len(tf.Codes) {
+				return res, fmt.Errorf("%d is out of range for %s in '%s'", r.Begin, fargs[0], fargs[2])
+			}
+			if r.End < 0 {
+				ranges[i].End = len(tf.Codes)
+			}
+			if ranges[i].End > len(tf.Codes) {
+				return res, fmt.Errorf("%d is out of range for %s in '%s'", ranges[i].End, fargs[0], fargs[2])
+			}
+		}
+
 		res = append(res, FamilyBlock{
 			Family: tf,
 			Size:   s,
