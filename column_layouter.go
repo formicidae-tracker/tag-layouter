@@ -57,18 +57,18 @@ func (c *ColumnLayouter) ComputeFamilySize(f FamilyBlock, columnWidthDot int) Pl
 	skips := len(f.FamilyLabel())*1/2 + 1
 	nbSlots := f.NumberOfTags() + skips
 
-	nbTagsPerRow := columnWidthDot / (actualTagWidth + actualBorderWidth)
+	nbTagsPerRow := (columnWidthDot - actualBorderWidth) / (actualTagWidth + actualBorderWidth)
 	nbRows := nbSlots / nbTagsPerRow
 	if nbSlots%nbTagsPerRow != 0 {
 		nbRows += 1
 	}
 
-	height := nbRows*(actualTagWidth+actualBorderWidth) - actualBorderWidth
+	height := nbRows*(actualTagWidth+actualBorderWidth) + actualBorderWidth
 	width := 0
 	if nbRows > 1 {
 		width = columnWidthDot
 	} else {
-		width = nbSlots*(actualTagWidth+actualBorderWidth) - actualBorderWidth
+		width = nbSlots*(actualTagWidth+actualBorderWidth) + actualBorderWidth
 	}
 
 	return PlacedFamily{
@@ -128,8 +128,8 @@ func (c *ColumnLayouter) LayoutOne(pf PlacedFamily) {
 	isFirst := true
 	for _, r := range pf.Ranges {
 		for i := r.Begin; i < r.End; i++ {
-			x := ix*(pf.ActualTagWidth+pf.ActualBorderWidth) + pf.X
-			y := iy*(pf.ActualTagWidth+pf.ActualBorderWidth) + pf.Y
+			x := ix*(pf.ActualTagWidth+pf.ActualBorderWidth) + pf.X + pf.ActualBorderWidth
+			y := iy*(pf.ActualTagWidth+pf.ActualBorderWidth) + pf.Y + pf.ActualBorderWidth
 			DrawTagDot(c.drawer, pf.Family, pf.Family.Codes[i], x, y, pf.ActualTagWidth)
 			ix += 1
 			if ix >= pf.NTagsPerRow {
@@ -170,7 +170,7 @@ func (c *ColumnLayouter) LayoutOne(pf PlacedFamily) {
 			}
 		}
 	}
-	c.drawer.Label(pf.X, pf.Y, pf.ActualTagWidth, label, color.RGBA{0xff, 00, 00, 0xff})
+	c.drawer.Label(pf.X+pf.ActualBorderWidth, pf.Y, pf.ActualTagWidth, label, color.RGBA{0xff, 00, 00, 0xff})
 
 }
 
@@ -225,13 +225,16 @@ func (c *ColumnLayouter) Layout(drawer Drawer, families []FamilyBlock) error {
 
 	for _, pf := range placedFamiliesFullWidth {
 		fitted := false
-		for idxCol, col := range columns {
-			if (pf.Height + col.Height + familyMarginDot) > columnHeightDot {
+		for idxCol, _ := range columns {
+			if (pf.Height + columns[idxCol].Height + familyMarginDot) > columnHeightDot {
 				continue
 			}
+			if len(columns[idxCol].Families) == 0 {
+				columns[idxCol].Height = -familyMarginDot
+			}
 			//			log.Printf("Placing %s in %d %d position", pf.FamilyLabel(), idxCol, len(col.Families))
-			pf.X = col.XOffset
-			pf.Y = col.Height + familyMarginDot
+			pf.X = columns[idxCol].XOffset
+			pf.Y = columns[idxCol].Height + familyMarginDot
 
 			columns[idxCol].Families = append(columns[idxCol].Families, pf)
 			columns[idxCol].Height += pf.Height + familyMarginDot

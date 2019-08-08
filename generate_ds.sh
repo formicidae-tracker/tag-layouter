@@ -4,7 +4,7 @@
 
 make
 
-format="svg"
+format="png"
 file=test
 
 for f in $format
