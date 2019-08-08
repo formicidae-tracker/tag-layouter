@@ -13,7 +13,7 @@ type ArenaLayouter struct {
 	Height float64
 }
 
-func (l *ArenaLayouter) Layout(drawer Drawer, families []FamilyAndSize) error {
+func (l *ArenaLayouter) Layout(drawer Drawer, families []FamilyBlock) error {
 	if len(families) != 1 {
 		return fmt.Errorf("Arena layouter only supports a single family (got:%d)", len(families))
 	}

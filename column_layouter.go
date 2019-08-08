@@ -38,12 +38,8 @@ func (c *ColumnLayouter) PerfectPixelSizeMM(size float64, border float64, cutlin
 	return tagSizeDot, borderSizeDot, cutLineSizeDot
 }
 
-func (f *FamilyAndSize) FamilyLabel() string {
-	return fmt.Sprintf("%s %.2fMM", f.Family.Name, f.Size)
-}
-
 type PlacedFamily struct {
-	FamilyAndSize
+	FamilyBlock
 	Height int
 	Width  int
 	X      int
@@ -56,10 +52,10 @@ type PlacedFamily struct {
 	Skips             int
 }
 
-func (c *ColumnLayouter) ComputeFamilySize(f FamilyAndSize, columnWidthDot int) PlacedFamily {
+func (c *ColumnLayouter) ComputeFamilySize(f FamilyBlock, columnWidthDot int) PlacedFamily {
 	actualTagWidth, actualBorderWidth, cutlineWidth := c.PerfectPixelSizeMM(f.Size, c.TagBorder, c.CutLine, f.Family.TotalWidth)
 	skips := len(f.FamilyLabel())*1/2 + 1
-	nbSlots := f.End - f.Begin - 1 + skips
+	nbSlots := f.NumberOfTags() + skips
 
 	nbTagsPerRow := columnWidthDot / (actualTagWidth + actualBorderWidth)
 	nbRows := nbSlots / nbTagsPerRow
@@ -76,7 +72,7 @@ func (c *ColumnLayouter) ComputeFamilySize(f FamilyAndSize, columnWidthDot int) 
 	}
 
 	return PlacedFamily{
-		FamilyAndSize:     f,
+		FamilyBlock:       f,
 		Height:            height,
 		Width:             width,
 		X:                 0,
@@ -130,48 +126,49 @@ func (c *ColumnLayouter) LayoutOne(pf PlacedFamily) {
 
 	cutLinePos := (pf.ActualBorderWidth - pf.CutLineWidth) / 2
 	isFirst := true
-	for i := pf.Begin; i < pf.End; i++ {
-		x := ix*(pf.ActualTagWidth+pf.ActualBorderWidth) + pf.X
-		y := iy*(pf.ActualTagWidth+pf.ActualBorderWidth) + pf.Y
-		DrawTagDot(c.drawer, pf.Family, pf.Family.Codes[i], x, y, pf.ActualTagWidth)
-		ix += 1
-		if ix >= pf.NTagsPerRow {
-			ix = 0
-			iy += 1
-		}
-		if pf.CutLineWidth == 0 {
-			continue
-		}
+	for _, r := range pf.Ranges {
+		for i := r.Begin; i < r.End; i++ {
+			x := ix*(pf.ActualTagWidth+pf.ActualBorderWidth) + pf.X
+			y := iy*(pf.ActualTagWidth+pf.ActualBorderWidth) + pf.Y
+			DrawTagDot(c.drawer, pf.Family, pf.Family.Codes[i], x, y, pf.ActualTagWidth)
+			ix += 1
+			if ix >= pf.NTagsPerRow {
+				ix = 0
+				iy += 1
+			}
+			if pf.CutLineWidth == 0 {
+				continue
+			}
 
-		c.drawer.DrawRectangle(x+pf.ActualTagWidth+cutLinePos,
-			y,
-			pf.CutLineWidth,
-			pf.ActualTagWidth,
-			color.Black)
-
-		c.drawer.DrawRectangle(x,
-			y+pf.ActualTagWidth+cutLinePos,
-			pf.ActualTagWidth,
-			pf.CutLineWidth,
-			color.Black)
-
-		if ix == 1 || isFirst == true {
-			isFirst = false
-			c.drawer.DrawRectangle(x-pf.CutLineWidth-cutLinePos,
+			c.drawer.DrawRectangle(x+pf.ActualTagWidth+cutLinePos,
 				y,
 				pf.CutLineWidth,
 				pf.ActualTagWidth,
 				color.Black)
-		}
 
-		if iy == 0 || iy == 1 && ix <= pf.Skips {
 			c.drawer.DrawRectangle(x,
-				y-cutLinePos-pf.CutLineWidth,
+				y+pf.ActualTagWidth+cutLinePos,
 				pf.ActualTagWidth,
 				pf.CutLineWidth,
 				color.Black)
-		}
 
+			if ix == 1 || isFirst == true {
+				isFirst = false
+				c.drawer.DrawRectangle(x-pf.CutLineWidth-cutLinePos,
+					y,
+					pf.CutLineWidth,
+					pf.ActualTagWidth,
+					color.Black)
+			}
+
+			if iy == 0 || iy == 1 && ix <= pf.Skips {
+				c.drawer.DrawRectangle(x,
+					y-cutLinePos-pf.CutLineWidth,
+					pf.ActualTagWidth,
+					pf.CutLineWidth,
+					color.Black)
+			}
+		}
 	}
 	c.drawer.Label(pf.X, pf.Y, pf.ActualTagWidth, label, color.RGBA{0xff, 00, 00, 0xff})
 
@@ -184,7 +181,7 @@ func max(a, b int) int {
 	return a
 }
 
-func (c *ColumnLayouter) Layout(drawer Drawer, families []FamilyAndSize) error {
+func (c *ColumnLayouter) Layout(drawer Drawer, families []FamilyBlock) error {
 	c.drawer = drawer
 	if c.NColumns < 1 {
 		return fmt.Errorf("Invalid number of column")
@@ -242,7 +239,7 @@ func (c *ColumnLayouter) Layout(drawer Drawer, families []FamilyAndSize) error {
 			break
 		}
 		if fitted == false {
-			return fmt.Errorf("Could not fill %s:%.2f:%d-%d in layout", pf.Family.Name, pf.Size, pf.Begin, pf.End)
+			return fmt.Errorf("Could not fill %s:%.2f:%s in layout", pf.Family.Name, pf.Size, pf.RangeString())
 		}
 	}
 
@@ -278,7 +275,7 @@ func (c *ColumnLayouter) Layout(drawer Drawer, families []FamilyAndSize) error {
 			break
 		}
 		if fitted == false {
-			return fmt.Errorf("Could not fill %s:%.2f:%d-%d in layout", pf.Family.Name, pf.Size, pf.Begin, pf.End)
+			return fmt.Errorf("Could not fill %s:%.2f:%s in layout", pf.Family.Name, pf.Size, pf.RangeString())
 		}
 	}
 

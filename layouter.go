@@ -1,5 +1,5 @@
 package main
 
 type Layouter interface {
-	Layout(drawer Drawer, families []FamilyAndSize) error
+	Layout(drawer Drawer, families []FamilyBlock) error
 }

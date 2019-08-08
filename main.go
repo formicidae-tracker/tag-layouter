@@ -42,14 +42,8 @@ type Options struct {
 	DPI           int      `short:"d" long:"dpi" description:"DPI to use" default:"2400"`
 }
 
-type FamilyAndSize struct {
-	Family     *TagFamily
-	Size       float64
-	Begin, End int
-}
-
-func ExtractFamilyAndSizes(list []string) ([]FamilyAndSize, error) {
-	res := []FamilyAndSize{}
+func ExtractFamilyAndSizes(list []string) ([]FamilyBlock, error) {
+	res := []FamilyBlock{}
 	for _, fAndSize := range list {
 		fargs := strings.Split(fAndSize, ":")
 		if len(fargs) <= 1 {
@@ -68,60 +62,27 @@ func ExtractFamilyAndSizes(list []string) ([]FamilyAndSize, error) {
 		}
 
 		if len(fargs) == 2 {
-			res = append(res, FamilyAndSize{
+			res = append(res, FamilyBlock{
 				Family: tf,
 				Size:   s,
-				Begin:  0,
-				End:    len(tf.Codes),
+				Ranges: []Range{
+					Range{
+						Begin: 0,
+						End:   len(tf.Codes),
+					},
+				},
 			})
 			continue
 		}
 
-		ranges := strings.Split(fargs[2], "-")
-		begin := -1
-		end := -1
-		if len(ranges) > 2 {
-			return res, fmt.Errorf("Only supports ranges XX XX- -XX XX-YY, got '%s'", fargs[2])
+		ranges, err := ExtractRanges(fargs[2])
+		if err != nil {
+			return res, err
 		}
-		if len(ranges) == 1 {
-			idx, err := strconv.ParseInt(ranges[0], 10, 64)
-			if err != nil {
-				return res, err
-			}
-			begin = int(idx)
-			end = int(idx) + 1
-
-		} else {
-			if len(ranges[0]) == 0 {
-				begin = 0
-			} else {
-				idx, err := strconv.ParseInt(ranges[0], 10, 64)
-				if err != nil {
-					return res, err
-				}
-				if int(idx) >= len(tf.Codes) {
-					return res, fmt.Errorf("%d is out-of-range in %s (size:%d)'", idx, fargs[0], len(tf.Codes))
-				}
-				begin = int(idx)
-			}
-			if len(ranges[1]) == 0 {
-				end = len(tf.Codes)
-			} else {
-				idx, err := strconv.ParseInt(ranges[0], 10, 64)
-				if err != nil {
-					return res, err
-				}
-				if int(idx) >= len(tf.Codes) {
-					return res, fmt.Errorf("%d is out-of-range in %s (size:%d)'", idx, fargs[0], len(tf.Codes))
-				}
-				end = int(idx)
-			}
-		}
-		res = append(res, FamilyAndSize{
+		res = append(res, FamilyBlock{
 			Family: tf,
 			Size:   s,
-			Begin:  begin,
-			End:    end,
+			Ranges: ranges,
 		})
 	}
 	return res, nil
