@@ -9,14 +9,15 @@ import (
 )
 
 type ColumnLayouter struct {
-	Width        float64
-	Height       float64
-	NColumns     int
-	FamilyMargin float64
-	TagBorder    float64
-	PaperBorder  float64
-	CutLine      float64
-	drawer       Drawer
+	Width            float64
+	Height           float64
+	NColumns         int
+	FamilyMargin     float64
+	TagBorder        float64
+	PaperBorder      float64
+	CutLine          float64
+	LabelroundedSize bool
+	drawer           Drawer
 }
 
 func (c *ColumnLayouter) PerfectPixelSizeMM(size float64, border float64, cutline float64, totalWidth int) (tagSizeDot int, borderSizeDot int, cutLineSizeDot int) {
@@ -122,8 +123,14 @@ func (fhs PlacedFamilyListByWidth) Swap(i, j int) {
 }
 
 func (c *ColumnLayouter) LayoutOne(pf PlacedFamily) {
-	label := pf.FamilyLabel()
 	actualSizeMM := c.drawer.ToMM(pf.ActualTagWidth)
+	label := ""
+	if c.LabelroundedSize == true {
+		label = pf.FamilyLabelActualSize(actualSizeMM)
+	} else {
+		label = pf.FamilyLabel()
+	}
+
 	log.Printf("%s:%.2fmm actual size: %.2f; error: %.2f%%",
 		pf.Family.Name,
 		pf.Size,
