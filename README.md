@@ -2,8 +2,8 @@
 Utility to draw families of tag on a paper sheet
 
 ## Requirements
-[go language] (http://golang.org/)
-[opencv] (http://opencv.org/releases/) to build the april tag examples
+* [go language] (http://golang.org/)
+* [opencv] (http://opencv.org/releases/) to build the april tag examples
 
 ## Installation
 ```bash
