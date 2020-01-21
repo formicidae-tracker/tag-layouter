@@ -15,11 +15,13 @@ this will produce the following error, because the tag libraries need to be comp
 gcc: error: apriltag/libapriltag.a: No such file or directory
 gcc: error: oldtags/liboldtags.a: No such file or directory
 ```
-To compile, navigate to the go root and compile:
+To compile the libraries and the layouter, navigate to the go root and use make:
 ```bash
-cd GOROOT/src/formicidae-tracker/tag-layouter
+cd $GOROOT/src/github.com/formicidae-tracker/tag-layouter
+export PATH=$PATH:/usr/local
 make
 ```
+The export is only needed to compile the apriltag examples and only if OpenCV is installed in /usr/local and not in the PATH.
 
 ## Usage
 To see all command line options:
