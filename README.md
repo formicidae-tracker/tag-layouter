@@ -34,8 +34,8 @@ To see all command line options:
 | -f | --file=            | File path to output                                        |         |
 | -t | --family-and-size= | Tag family and size to use. format: 'name:size:begin-end'  |         |
 |    | --column-number=   | Number of columns to display multiple families             | 0       |
-|    | --cut-line-ratio=  | Border between tags in column layout [mm]                  | 0.2     |
-|    | --family-margin=   | Ratio of the border between tags that should be a cut line | 0.0     |
+|    | --cut-line-ratio=  | Ratio of the border between tags that should be a cut line | 0.0     |
+|    | --family-margin=   | Margin between tag families [mm]                           | 2.0     |
 |    | --arena-number=    | Number of tags to display in an arena                      | 0       |
 | -W | --width=           | Width to use [mm]                                          | 210     |
 | -H | --height=          | Height to use [mm]                                         | 297     |
@@ -58,7 +58,7 @@ Using the *column-number* flag, produces the sets of the tag families specified 
 
 The *familiy-margin* option specifies the space between two tag families.
 
-The *cut-line-ratio* specifies the ration of the distances towards the printed cutting border between tw adjacent tags. If the default is used, no cutting border is printed.
+The *cut-line-ratio* specifies the thickness of the cutting line (ratio of the thickness of the printed cutting line and the disctance between adjacent tags).
 
 ### General options
 *widht*, *height*, *paper-border* and *dpi* are specified with respect to the printing page layout.
