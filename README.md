@@ -20,10 +20,6 @@ To compile, navigate to the go root and compile:
 cd GOROOT/src/formicidae-tracker/tag-layouter
 make
 ```
-then once again:
-```bash
-go get github.com/formicidae-tracker/tag-layouter
-```
 
 ## Usage
 To see all command line options:
