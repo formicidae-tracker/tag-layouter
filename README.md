@@ -67,7 +67,7 @@ The *cut-line-ratio* specifies the thickness of the cutting line (ratio of the t
 *widht*, *height*, *paper-border* and *dpi* are specified with respect to the printing page layout.
 
 ## Printing
-It is advidable to convert the svg or png output file to pdf for printing. In ubuntu, this can be done using librsvg. To install:
+It is advisable to convert the svg or png output file to pdf for printing. In ubuntu, this can be done using librsvg. To install:
 ```bash
 sudo apt-get install librsvg2-bin
 ```
