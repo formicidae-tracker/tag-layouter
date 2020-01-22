@@ -75,5 +75,5 @@ Example of conversion:
 ```bash
 rsvg-convert -f pdf -o foo.pdf bar.svg -z <ratio>
 ```
-where <ratio> = size of svg image / size of printing format (e.g. A4). `pdfinfo` can be used to establish the format.
+where *ratio* = size of svg image / size of printing format (e.g. A4). `pdfinfo` can be used to establish the format. Make sure that there is no additional scaling done by the printer.
 
