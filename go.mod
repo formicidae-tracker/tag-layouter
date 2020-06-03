@@ -1,5 +1,7 @@
 module gihtub.com/formicidae-tracker/tag-layouter
 
+go 1.14
+
 require (
 	github.com/ajstarks/svgo v0.0.0-20181006003313-6ce6a3bcf6cd
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
