@@ -83,8 +83,12 @@ type FamilyBlock struct {
 	Ranges []Range
 }
 
+func (f *FamilyBlock) FamilyLabelActualSize(size float64) string {
+	return fmt.Sprintf("%s %.2fMM", f.Family.Name, size)
+}
+
 func (f *FamilyBlock) FamilyLabel() string {
-	return fmt.Sprintf("%s %.2fMM", f.Family.Name, f.Size)
+	return f.FamilyLabelActualSize(f.Size)
 }
 
 func (f *FamilyBlock) NumberOfTags() int {
