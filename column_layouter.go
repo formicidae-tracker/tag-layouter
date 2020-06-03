@@ -131,11 +131,13 @@ func (c *ColumnLayouter) LayoutOne(pf PlacedFamily) {
 		label = pf.FamilyLabel()
 	}
 
-	log.Printf("%s:%.2fmm actual size: %.2f; error: %.2f%%",
+	log.Printf("%s:%.2fmm actual size: %.2f; error: %.2f%% at (%d,%d)",
 		pf.Family.Name,
 		pf.Size,
 		actualSizeMM,
-		math.Abs(actualSizeMM-pf.Size)/pf.Size*100)
+		math.Abs(actualSizeMM-pf.Size)/pf.Size*100,
+		pf.X,
+		pf.Y)
 
 	ix := pf.Skips % pf.NTagsPerRow
 	iy := pf.Skips / pf.NTagsPerRow
@@ -205,7 +207,7 @@ func (c *ColumnLayouter) Layout(drawer Drawer, families []FamilyBlock) error {
 
 	familyMarginDot := drawer.ToDot(c.FamilyMargin)
 	paperBorderDot := drawer.ToDot(c.PaperBorder)
-
+	log.Printf("%d %f", paperBorderDot, c.PaperBorder)
 	columnWidthDot := (drawer.ToDot(c.Width) - 2*paperBorderDot - familyMarginDot*(c.NColumns-1)) / c.NColumns
 
 	columnHeightDot := drawer.ToDot(c.Height) - 2*paperBorderDot
@@ -246,7 +248,7 @@ func (c *ColumnLayouter) Layout(drawer Drawer, families []FamilyBlock) error {
 				continue
 			}
 			if len(columns[idxCol].Families) == 0 {
-				columns[idxCol].Height = -familyMarginDot
+				columns[idxCol].Height = paperBorderDot - familyMarginDot
 			}
 			//			log.Printf("Placing %s in %d %d position", pf.FamilyLabel(), idxCol, len(col.Families))
 			pf.X = columns[idxCol].XOffset
