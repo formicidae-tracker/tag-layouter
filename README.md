@@ -6,24 +6,20 @@ Utility to draw families of tag on a paper sheet
 * [opencv](http://opencv.org/releases/) to build the april tag examples
 
 ## Installation
+
+This software is not to be installed system wise, but rather used locally.
+
 ```bash
-go get github.com/formicidae-tracker/tag-layouter
+	cd tag-layouter
+	git submodule init
+	fit submodule update
+	make
+	# make may fails once on OpenCV4 system, just re-make once
+	make
 ```
-this will produce the following error, because the tag libraries need to be compiled first:
-```bash
-# github.com/formicidae-tracker/tag-layouter
-gcc: error: apriltag/libapriltag.a: No such file or directory
-gcc: error: oldtags/liboldtags.a: No such file or directory
-```
-To compile the libraries and the layouter, navigate to the go root and use make:
-```bash
-cd $GOROOT/src/github.com/formicidae-tracker/tag-layouter
-export PATH=$PATH:/usr/local
-make
-```
-The export is only needed to compile the apriltag examples and only if OpenCV is installed in /usr/local and not in the PATH.
 
 ## Usage
+
 To see all command line options:
 ```bash
 ./tag-layouter -h
@@ -66,14 +62,28 @@ The *cut-line-ratio* specifies the thickness of the cutting line (ratio of the t
 ### General options
 *widht*, *height*, *paper-border* and *dpi* are specified with respect to the printing page layout.
 
-## Printing
-It is advisable to convert the svg or png output file to pdf for printing. In ubuntu, this can be done using librsvg. To install:
-```bash
-sudo apt-get install librsvg2-bin
-```
-Example of conversion:
-```bash
-rsvg-convert -f pdf -o foo.pdf bar.svg -z <ratio>
-```
-where *ratio* = size of svg image / size of printing format (e.g. A4). `pdfinfo` can be used to establish the format. Make sure that there is no additional scaling done by the printer.
+### How to wrap up everythin: using a shell script
 
+The `tag-layouter` program will have a lot of option. One solution is
+to summarize them in a shell script, such as [generate_dlr.sh].
+
+## Printing
+
+The best option for prininting is to use raw image format rather than
+PDF / SVG. Indeed the ratserisation of these files may produce
+artifact that will leave the tags unusable.
+
+A good option is to prefer the TIF format and use a program like GIMP to print it.
+
+You can add resolution information to any tiff image usinge imagemagick
+
+To install imagemagick on Debian/Ubuntu :
+``` bash
+sudo apt install imagemagick
+```
+
+And to set the correct image resolution (here 1200 PPI ) :
+
+``` bash
+convert <my-file.tiff> -units PixelsPerInch -density 1200 <my-file.tiff>
+```
