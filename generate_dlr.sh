@@ -4,7 +4,7 @@ make
 
 
 formats="png tiff svg"
-resolutions="1200"
+resolutions="1200 2400"
 file=test_dlr
 
 
@@ -77,6 +77,4 @@ families="36h10 36h11 Standard41h12"
 sizes="0.5 0.7 0.9 1.1 1.45"
 sizes_queen="$sizes 1.6 2.2"
 
-layout_one "test_dlr_Standard41h12" "$resolutions" "$formats" "Standard41h12" "0.5 0.7 0.9 1.1 1.45" "0.5 0.7 0.9 1.1 1.45 1.6 2.2" "2"
-layout_one "test_dlr_36h11" "$resolutions" "$formats" "36h11" "0.5 0.7 0.9 1.1 1.45 1.6 2.2 2.4" "0.5 0.7 0.9 1.1 1.45 1.6 2.2 2.4 2.6 2.8 3.0" "3"
-layout_one "test_dlr_36h10" "$resolutions" "$formats" "36h10" "0.5 0.7 0.9 1.1 1.45" "0.5 0.7 0.9 1.1 1.45 1.6 2.2" "2"
+layout_one "test_dlr_v3" "$resolutions" "$formats" "Standard41h12 36h11" "0.5 0.7 0.9 1.45" "" "2"
