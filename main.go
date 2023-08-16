@@ -12,6 +12,9 @@ import (
 	"github.com/jessevdk/go-flags"
 )
 
+//go:generate make -C apriltag
+//go:generate make -C oldtags
+
 type Point struct {
 	X, Y float64
 }
