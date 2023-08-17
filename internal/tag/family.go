@@ -124,3 +124,17 @@ func GetFamily(name string) (*Family, error) {
 	allocated[name] = res
 	return res, nil
 }
+
+func (f *Family) BuildTag(n int) *Tag {
+	image := newImage(f.TotalWidth, f.TotalWidth)
+
+	offset := (f.TotalWidth - f.WidthAtBorder) / 2
+
+	if f.ReversedBorder == false {
+		//we should set the white border
+		for i := 0; i < f.TotalWidth; i++ {
+
+		}
+	}
+
+}
