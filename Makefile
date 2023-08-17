@@ -1,9 +1,9 @@
-tag-layouter: apriltag/libapriltag.a oldtags/liboldtags.a
-	go test -coverprofile cover.out
-	go build
+all: tag check
 
-apriltag/libapriltag.a:
-	$(MAKE) -C apriltag
+tag:
+	make -C internal/tag
 
-oldtags/liboldtags.a:
-	$(MAKE) -C oldtags
+check:
+	make -C internal/tag check
+
+.PHONY: all check

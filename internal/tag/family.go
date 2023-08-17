@@ -1,4 +1,4 @@
-package main
+package tag
 
 /*
 #include "apriltag/apriltag.h"
@@ -14,14 +14,14 @@ package main
 #cgo LDFLAGS:  apriltag/libapriltag.a oldtags/liboldtags.a -lm
 */
 import "C"
+
 import (
 	"fmt"
 	"reflect"
-	"strings"
 	"unsafe"
 )
 
-type TagFamily struct {
+type Family struct {
 	Codes          []uint64
 	NBits          int
 	LocationX      []int
@@ -34,7 +34,7 @@ type TagFamily struct {
 	ReversedBorder bool
 }
 
-func newTagFamily(tf *C.apriltag_family_t, name string) *TagFamily {
+func newTagFamily(tf *C.apriltag_family_t, name string) *Family {
 	ncodes := int(tf.ncodes)
 	nbits := int(tf.nbits)
 	var codes []uint64
@@ -53,7 +53,7 @@ func newTagFamily(tf *C.apriltag_family_t, name string) *TagFamily {
 	sliceHeaderY.Len = nbits
 	sliceHeaderY.Data = uintptr(unsafe.Pointer(tf.bit_y))
 
-	res := &TagFamily{
+	res := &Family{
 		Codes:          append([]uint64{}, codes...),
 		Name:           name,
 		NBits:          nbits,
@@ -83,69 +83,44 @@ func newTagFamily(tf *C.apriltag_family_t, name string) *TagFamily {
 	return res
 }
 
-func (tf *TagFamily) CodeSize() int {
+func (tf *Family) CodeSize() int {
 	return tf.NBits
 }
 
-func (tf *TagFamily) SizeInPX() int {
+func (tf *Family) SizeInPX() int {
 	return tf.TotalWidth
 }
 
-type cAprilTagFamily struct {
-	Constructor func() *C.apriltag_family_t
-	Destructor  func(*C.apriltag_family_t)
-}
+type cAprilTagFamily func() *C.apriltag_family_t
 
 var familyFactory map[string]cAprilTagFamily
 
 func init() {
 	familyFactory = map[string]cAprilTagFamily{
-		"36h10": cAprilTagFamily{
-			Constructor: func() *C.apriltag_family_t { return C.tag36h10_create() },
-			Destructor:  func(f *C.apriltag_family_t) { C.tag36h10_destroy(f) },
-		},
-		"36h11": cAprilTagFamily{
-			Constructor: func() *C.apriltag_family_t { return C.tag36h11_create() },
-			Destructor:  func(f *C.apriltag_family_t) { C.tag36h11_destroy(f) },
-		},
-		"16h5": cAprilTagFamily{
-			Constructor: func() *C.apriltag_family_t { return C.tag16h5_create() },
-			Destructor:  func(f *C.apriltag_family_t) { C.tag16h5_destroy(f) },
-		},
-		"25h9": cAprilTagFamily{
-			Constructor: func() *C.apriltag_family_t { return C.tag25h9_create() },
-			Destructor:  func(f *C.apriltag_family_t) { C.tag25h9_destroy(f) },
-		},
-		"Circle21h7": cAprilTagFamily{
-			Constructor: func() *C.apriltag_family_t { return C.tagCircle21h7_create() },
-			Destructor:  func(f *C.apriltag_family_t) { C.tagCircle21h7_destroy(f) },
-		},
-		"Circle49h12": cAprilTagFamily{
-			Constructor: func() *C.apriltag_family_t { return C.tagCircle49h12_create() },
-			Destructor:  func(f *C.apriltag_family_t) { C.tagCircle49h12_destroy(f) },
-		},
-		"Custom48h12": cAprilTagFamily{
-			Constructor: func() *C.apriltag_family_t { return C.tagCustom48h12_create() },
-			Destructor:  func(f *C.apriltag_family_t) { C.tagCustom48h12_destroy(f) },
-		},
-		"Standard41h12": cAprilTagFamily{
-			Constructor: func() *C.apriltag_family_t { return C.tagStandard41h12_create() },
-			Destructor:  func(f *C.apriltag_family_t) { C.tagStandard41h12_destroy(f) },
-		},
-		"Standard52h13": cAprilTagFamily{
-			Constructor: func() *C.apriltag_family_t { return C.tagStandard52h13_create() },
-			Destructor:  func(f *C.apriltag_family_t) { C.tagStandard52h13_destroy(f) },
-		},
+		"36h10":         func() *C.apriltag_family_t { return C.tag36h10_create() },
+		"36h11":         func() *C.apriltag_family_t { return C.tag36h11_create() },
+		"16h5":          func() *C.apriltag_family_t { return C.tag16h5_create() },
+		"25h9":          func() *C.apriltag_family_t { return C.tag25h9_create() },
+		"Circle21h7":    func() *C.apriltag_family_t { return C.tagCircle21h7_create() },
+		"Circle49h12":   func() *C.apriltag_family_t { return C.tagCircle49h12_create() },
+		"Custom48h12":   func() *C.apriltag_family_t { return C.tagCustom48h12_create() },
+		"Standard41h12": func() *C.apriltag_family_t { return C.tagStandard41h12_create() },
+		"Standard52h13": func() *C.apriltag_family_t { return C.tagStandard52h13_create() },
 	}
 }
 
-func GetFamily(name string) (*TagFamily, error) {
+var allocated = make(map[string]*Family)
+
+func GetFamily(name string) (*Family, error) {
+	if alreadyAllocated, ok := allocated[name]; ok == true {
+		return alreadyAllocated, nil
+	}
+
 	ff, ok := familyFactory[name]
 	if ok == false {
 		return nil, fmt.Errorf("Unknown famnily '%s'", name)
 	}
-	name = strings.ToUpper(name)
-	tf := ff.Constructor()
-	defer ff.Destructor(tf)
-	return newTagFamily(tf, name), nil
+	res := newTagFamily(ff(), name)
+	allocated[name] = res
+	return res, nil
 }
