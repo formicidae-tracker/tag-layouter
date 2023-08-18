@@ -36,6 +36,18 @@ func renderImage(img []uint8) string {
 	return res + "\n└" + strings.Repeat("─", size) + "┘\n"
 }
 
+func (s *PathSuite) testPathBuilding(img []uint8, expected [][]image.Point) {
+	size := int(math.Sqrt(float64(len(img))))
+	s.Require().Equal(size*size, len(img), "invalid test data: image must be square")
+	gray := &image.Gray{
+		Pix:    img,
+		Stride: size,
+		Rect:   image.Rect(0, 0, size, size),
+	}
+	path := BuildPath(gray)
+	s.Equal(expected, path)
+}
+
 func (s *PathSuite) TestSimplePolygonGeneration() {
 	testdata := []struct {
 		Name     string
@@ -63,22 +75,22 @@ func (s *PathSuite) TestSimplePolygonGeneration() {
 				{{1, 1}, {2, 1}, {2, 2}, {1, 2}},
 			},
 		},
+		{
+			Name: "3x3 cross",
+			Image: []uint8{
+				0xff, 0x00, 0xff,
+				0x00, 0x00, 0x00,
+				0xff, 0x00, 0xff,
+			},
+			Expected: [][]image.Point{
+				{{1, 1}, {2, 1}, {2, 2}, {1, 2}},
+			},
+		},
 	}
 
 	for _, d := range testdata {
-		if s.Run(d.Name,
-			func() {
-				size := int(math.Sqrt(float64(len(d.Image))))
-				s.Require().Equal(size*size, len(d.Image), "image must be square")
-				img := &image.Gray{
-					Pix:    d.Image,
-					Stride: size,
-					Rect:   image.Rect(0, 0, size, size),
-				}
-				path := BuildPath(img)
-				s.Equal(d.Expected, path)
-			}) == false {
-			fmt.Printf("failed image is: %s", renderImage(d.Image))
+		if s.Run(d.Name, func() { s.testPathBuilding(d.Image, d.Expected) }) == false {
+			fmt.Printf("failed image for '%s' is: %s", d.Name, renderImage(d.Image))
 		}
 	}
 
