@@ -17,6 +17,9 @@ import "C"
 
 import (
 	"fmt"
+	"image"
+	"image/color"
+	"image/draw"
 	"reflect"
 	"unsafe"
 )
@@ -125,16 +128,30 @@ func GetFamily(name string) (*Family, error) {
 	return res, nil
 }
 
-func (f *Family) BuildTag(n int) *Tag {
-	image := newImage(f.TotalWidth, f.TotalWidth)
-
+func (f *Family) BuildTag(n int) *image.Gray {
+	res := image.NewGray(image.Rect(0, 0, f.TotalWidth, f.TotalWidth))
 	offset := (f.TotalWidth - f.WidthAtBorder) / 2
-
+	inside := image.Rect(offset, offset, offset+f.WidthAtBorder, offset+f.WidthAtBorder)
 	if f.ReversedBorder == false {
-		//we should set the white border
-		for i := 0; i < f.TotalWidth; i++ {
+		draw.Draw(res, res.Bounds(), image.NewUniform(color.White), image.Pt(0, 0), draw.Src)
+		draw.Draw(res, inside, image.NewUniform(color.Black), image.Pt(0, 0), draw.Src)
+	} else {
+		draw.Draw(res, inside, image.NewUniform(color.White), image.Pt(0, 0), draw.Src)
+	}
+	for i := 0; i < f.NBits; i++ {
+		var bit uint64 = (uint64(1) << (uint64(f.NBits) - 1 - uint64(i)))
+		isSet := bit&f.Codes[n] != 0
+		backgroundIsBlack := f.Inside[i] != f.ReversedBorder
 
+		if isSet != backgroundIsBlack {
+			continue
 		}
+		value := color.White
+		if backgroundIsBlack == false {
+			value = color.Black
+		}
+		res.Set(offset+f.LocationX[i], offset+f.LocationY[i], value)
 	}
 
+	return res
 }

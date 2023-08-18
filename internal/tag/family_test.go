@@ -2,6 +2,11 @@ package tag
 
 import (
 	"fmt"
+	"image"
+	"image/draw"
+	"image/png"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -137,7 +142,7 @@ func (s *FamilySuite) TestTagFamily() {
 	for name, expected := range testData {
 		comment := fmt.Sprintf("testing %s ", name)
 		family, err := GetFamily(name)
-		if s.Nil(err, comment+" error") == false {
+		if s.NoError(err, comment+" error") == false {
 			continue
 		}
 		s.Equal(expected.Family.Name, family.Name, comment+" name")
@@ -150,6 +155,34 @@ func (s *FamilySuite) TestTagFamily() {
 		s.Equal(expected.Family.TotalWidth, family.TotalWidth, comment+" TotalWidth")
 		s.Equal(expected.Family.WidthAtBorder, family.WidthAtBorder, comment+" WidthAtBorder")
 		s.Equal(expected.Family.ReversedBorder, family.ReversedBorder, comment+" ReversedBorder")
+	}
+
+}
+
+func requirePngGrayImage(s *suite.Suite, path string) *image.Gray {
+	comment := fmt.Sprintf("Reading '%s'", path)
+	file, err := os.Open(path)
+	s.Require().NoError(err, comment)
+	defer func() { s.Require().NoError(file.Close()) }()
+	img, err := png.Decode(file)
+	s.Require().NoError(err, comment)
+	res := image.NewGray(img.Bounds())
+	draw.Draw(res, res.Bounds(), img, image.Pt(0, 0), draw.Src)
+	return res
+}
+
+func (s *FamilySuite) TestTagRendering() {
+	officialFamilies := []string{"16h5", "25h9", "36h11", "Circle21h7",
+		"Circle49h12", "Standard41h12", "Standard52h13"}
+	// Note: not testing custom as the transparency causes a lot of
+	// issues and we likely do not need it.
+	for _, name := range officialFamilies {
+		comment := fmt.Sprintf("rendering '%s':0", name)
+		expectedImagePath := filepath.Join("utest-data", fmt.Sprintf("tag%s_00000.png", name))
+		expected := requirePngGrayImage(&(s.Suite), expectedImagePath)
+		family, err := GetFamily(name)
+		s.Require().NoError(err, comment)
+		s.Equal(expected, family.BuildTag(0), comment)
 	}
 
 }
