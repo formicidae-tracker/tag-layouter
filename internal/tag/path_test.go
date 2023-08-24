@@ -23,15 +23,14 @@ func TestPathSuite(t *testing.T) {
 	suite.Run(t, new(PathSuite))
 }
 
-type Path [][]image.Point
+type polygons []Polygon
 
-func (p Path) String() string {
+func (ps polygons) String() string {
 	res := []string{}
-	for _, pp := range p {
-		res = append(res, fmt.Sprintf("%s", pp))
+	for _, p := range ps {
+		res = append(res, p.String())
 	}
 	return strings.Join(res, "\n")
-
 }
 
 func renderImage(img *image.Gray) string {
@@ -63,25 +62,25 @@ func (s *PathSuite) requireGrayImage(img []uint8) *image.Gray {
 	}
 }
 
-func (s *PathSuite) testPathBuilding(img []uint8, expected [][]image.Point) {
+func (s *PathSuite) testPathBuilding(img []uint8, expected []Polygon) {
 	gray := s.requireGrayImage(img)
-	path := BuildPath(gray)
-	s.Equalf(expected, path, "actual: %s\nexpected: %s", Path(path), Path(expected))
+	path := BuildPolygons(gray)
+	s.Equalf(expected, path, "actual: %s\nexpected: %s", polygons(path), polygons(expected))
 }
 
 func (s *PathSuite) TestSimplePolygonGeneration() {
 	testdata := []struct {
 		Name     string
 		Image    []uint8
-		Expected [][]image.Point
+		Expected []Polygon
 	}{
 		{
 			Name: "1x1 black",
 			Image: []uint8{
 				0x00,
 			},
-			Expected: [][]image.Point{
-				{{0, 0}, {1, 0}, {1, 1}, {0, 1}},
+			Expected: []Polygon{
+				{color.Black, []image.Point{{0, 0}, {1, 0}, {1, 1}, {0, 1}}},
 			},
 		},
 
@@ -92,8 +91,8 @@ func (s *PathSuite) TestSimplePolygonGeneration() {
 				0xff, 0x00, 0xff,
 				0xff, 0xff, 0xff,
 			},
-			Expected: [][]image.Point{
-				{{1, 1}, {2, 1}, {2, 2}, {1, 2}},
+			Expected: []Polygon{
+				{color.Black, []image.Point{{1, 1}, {2, 1}, {2, 2}, {1, 2}}},
 			},
 		},
 		{
@@ -103,10 +102,11 @@ func (s *PathSuite) TestSimplePolygonGeneration() {
 				0x00, 0x00, 0x00,
 				0xff, 0x00, 0xff,
 			},
-			Expected: [][]image.Point{
+			Expected: []Polygon{
 				{
-					{1, 0}, {2, 0}, {2, 1}, {3, 1}, {3, 2}, {2, 2},
-					{2, 3}, {1, 3}, {1, 2}, {0, 2}, {0, 1}, {1, 1},
+					color.Black,
+					[]image.Point{{1, 0}, {2, 0}, {2, 1}, {3, 1}, {3, 2}, {2, 2},
+						{2, 3}, {1, 3}, {1, 2}, {0, 2}, {0, 1}, {1, 1}},
 				},
 			},
 		},
@@ -117,10 +117,10 @@ func (s *PathSuite) TestSimplePolygonGeneration() {
 				0xff, 0x00, 0xff,
 				0xff, 0xff, 0x00,
 			},
-			Expected: [][]image.Point{
-				{{0, 0}, {1, 0}, {1, 1}, {0, 1}},
-				{{1, 1}, {2, 1}, {2, 2}, {1, 2}},
-				{{2, 2}, {3, 2}, {3, 3}, {2, 3}},
+			Expected: []Polygon{
+				{color.Black, []image.Point{{0, 0}, {1, 0}, {1, 1}, {0, 1}}},
+				{color.Black, []image.Point{{1, 1}, {2, 1}, {2, 2}, {1, 2}}},
+				{color.Black, []image.Point{{2, 2}, {3, 2}, {3, 3}, {2, 3}}},
 			},
 		},
 	}
@@ -138,7 +138,7 @@ func (s *PathSuite) TestComplexPolygonGeneration() {
 	testdata := []struct {
 		Name     string
 		Image    []uint8
-		Expected [][]image.Point
+		Expected []Polygon
 	}{
 		{
 			Name: "3x3 white dot",
@@ -147,9 +147,9 @@ func (s *PathSuite) TestComplexPolygonGeneration() {
 				0x00, 0xff, 0x00,
 				0x00, 0x00, 0x00,
 			},
-			Expected: [][]image.Point{
-				{{0, 0}, {3, 0}, {3, 3}, {0, 3}},
-				{{1, 1}, {2, 1}, {2, 2}, {1, 2}},
+			Expected: []Polygon{
+				{color.Black, []image.Point{{0, 0}, {3, 0}, {3, 3}, {0, 3}}},
+				{color.White, []image.Point{{1, 1}, {2, 1}, {2, 2}, {1, 2}}},
 			},
 		},
 		{
@@ -164,13 +164,14 @@ func (s *PathSuite) TestComplexPolygonGeneration() {
 				0xff, 0xff, 0xff, 0xff, 0x00, 0xff, 0xff, 0xff,
 				0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 			},
-			Expected: [][]image.Point{
-				{{1, 1}, {3, 1}, {3, 2}, {4, 2}, {4, 1}, {5, 1}, {5, 3}, {4, 3},
-					{4, 5}, {3, 5}, {3, 4}, {2, 4}, {2, 2}, {1, 2}},
-				{{6, 1}, {7, 1}, {7, 3}, {6, 3}},
-				{{1, 4}, {2, 4}, {2, 5}, {1, 5}},
-				{{2, 5}, {3, 5}, {3, 6}, {2, 6}},
-				{{4, 5}, {6, 5}, {6, 6}, {5, 6}, {5, 7}, {4, 7}},
+			Expected: []Polygon{
+				{color.Black, []image.Point{{1, 1}, {3, 1}, {3, 2}, {4, 2},
+					{4, 1}, {5, 1}, {5, 3}, {4, 3}, {4, 5}, {3, 5}, {3, 4},
+					{2, 4}, {2, 2}, {1, 2}}},
+				{color.Black, []image.Point{{6, 1}, {7, 1}, {7, 3}, {6, 3}}},
+				{color.Black, []image.Point{{1, 4}, {2, 4}, {2, 5}, {1, 5}}},
+				{color.Black, []image.Point{{2, 5}, {3, 5}, {3, 6}, {2, 6}}},
+				{color.Black, []image.Point{{4, 5}, {6, 5}, {6, 6}, {5, 6}, {5, 7}, {4, 7}}},
 			},
 		},
 	}
@@ -206,53 +207,36 @@ func (s *PathSuite) testTagFamily(name string) {
 
 func (s *PathSuite) testTagRendering(family *Family, i int) {
 	img := family.BuildTag(i)
-	paths := BuildPath(img)
-	colorInversions := 1
-	if family.ReversedBorder {
-		colorInversions = 2
-	}
+	polygons := BuildPolygons(img)
 
-	rendered := s.renderTagFromPath(paths, img.Rect, colorInversions)
+	rendered := s.renderTagFromPolygons(polygons, img.Rect)
 	if s.Equal(img, rendered) == false {
 		renderImageDiff(os.Stdout, i, img, rendered)
 	}
 }
 
-func (s *PathSuite) renderTagFromPath(paths [][]image.Point, size image.Rectangle, colorInversions int) *image.Gray {
-	s.Require().GreaterOrEqual(len(paths), colorInversions+1)
-
+func (s *PathSuite) renderTagFromPolygons(polygons []Polygon, size image.Rectangle) *image.Gray {
 	//start with a white image
 	dst := image.NewGray(size)
 	draw.Draw(dst, dst.Bounds(), image.NewUniform(color.White), image.Point{}, draw.Src)
-	for i := 0; i < colorInversions; i++ {
-		penColor := color.Black
-		if i%2 == 1 {
-			penColor = color.White
-		}
-		s.drawPathOn(paths[i], dst, penColor)
-	}
 
-	penColor := color.Black
-	if colorInversions%2 == 1 {
-		penColor = color.White
-	}
-	for _, path := range paths[colorInversions:] {
-		s.drawPathOn(path, dst, penColor)
+	for _, p := range polygons {
+		s.drawPolygonOn(p, dst)
 	}
 
 	return dst
 }
 
-func (s *PathSuite) drawPathOn(path []image.Point, img *image.Gray, c color.Color) {
-	s.Require().Greater(len(path), 0)
+func (s *PathSuite) drawPolygonOn(p Polygon, img *image.Gray) {
+	s.Require().Greater(len(p.Vertices), 0)
 	r := vector.NewRasterizer(img.Bounds().Dx(), img.Bounds().Dy())
-	r.MoveTo(float32(path[0].X), float32(path[0].Y))
-	for _, v := range path[1:] {
+	r.MoveTo(float32(p.Vertices[0].X), float32(p.Vertices[0].Y))
+	for _, v := range p.Vertices[1:] {
 		r.LineTo(float32(v.X), float32(v.Y))
 	}
 	r.ClosePath()
 
-	r.Draw(img, img.Bounds(), image.NewUniform(c), image.Point{})
+	r.Draw(img, img.Bounds(), image.NewUniform(p.Color), image.Point{})
 }
 
 func renderImageDiff(w io.Writer, i int, expected *image.Gray, actual *image.Gray) {

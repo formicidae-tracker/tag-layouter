@@ -3,9 +3,23 @@ package tag
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"io"
 	"strings"
 )
+
+type Polygon struct {
+	Color    color.Color
+	Vertices []image.Point
+}
+
+func (p Polygon) String() string {
+	return fmt.Sprintf("{ Color: %s, Vertices: %s}", p.Color, p.Vertices)
+}
+
+func BuildPolygons(img *image.Gray) []Polygon {
+	return newPathBuilder(img).buildPaths()
+}
 
 type direction int
 
@@ -171,13 +185,17 @@ func (b *pathBuilder) buildPath(pos image.Point) []image.Point {
 
 }
 
-func (b *pathBuilder) buildPaths() [][]image.Point {
-	res := [][]image.Point{}
+func (b *pathBuilder) buildPaths() []Polygon {
+	res := []Polygon{}
 
 	pos := b.FindFirstUpEdge(b.image.Rect.Min)
 
 	for pos != b.image.Rect.Max {
-		res = append(res, b.buildPath(pos))
+		c := color.Black
+		if b.image.GrayAt(pos.X, pos.Y).Y != 0x00 {
+			c = color.White
+		}
+		res = append(res, Polygon{Color: c, Vertices: b.buildPath(pos)})
 		pos = b.FindFirstUpEdge(pos)
 	}
 
@@ -189,8 +207,4 @@ func newPathBuilder(img *image.Gray) *pathBuilder {
 		image:   img,
 		visited: image.NewGray(img.Rect),
 	}
-}
-
-func BuildPath(img *image.Gray) [][]image.Point {
-	return newPathBuilder(img).buildPaths()
 }
