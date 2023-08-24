@@ -2,7 +2,11 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
+	"os"
+
+	"github.com/jessevdk/go-flags"
 )
 
 func main() {
@@ -12,5 +16,13 @@ func main() {
 }
 
 func execute() error {
+	var opts Options
+	if _, err := flags.Parse(&opts); err != nil {
+		if flags.WroteHelp(err) {
+			os.Exit(0)
+		}
+		os.Exit(1)
+	}
+	fmt.Printf("%+v", opts)
 	return errors.New("not yet implemented")
 }
