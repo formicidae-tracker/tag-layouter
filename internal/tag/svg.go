@@ -2,8 +2,9 @@ package tag
 
 import (
 	"fmt"
+	"image"
 	"image/color"
-	"log"
+	"strings"
 
 	svg "github.com/ajstarks/svgo"
 )
@@ -20,5 +21,26 @@ func RenderToSVG(SVG *svg.SVG, polygons []Polygon) {
 	if len(polygons) == 0 {
 		return
 	}
-	log.Println(toHex(polygons[0].Color))
+	paths := make([]string, len(polygons))
+
+	for i := range polygons {
+		paths[i] = buildSVGPath(polygons[i].Vertices)
+	}
+
+	SVG.Path(strings.Join(paths, " "),
+		fmt.Sprintf("style=\"fill:%s;\"", toHex(polygons[0].Color)))
+}
+
+func buildSVGPath(points []image.Point) string {
+
+	if len(points) < 2 {
+		return ""
+	}
+
+	coords := make([]string, len(points))
+	for i := range points {
+		coords[i] = fmt.Sprintf("%d %d", points[i].X, points[i].Y)
+	}
+	return "M " + strings.Join(coords, " L ") + " z"
+
 }
