@@ -1,11 +1,10 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	"log"
 	"os"
 
+	svg "github.com/ajstarks/svgo"
 	"github.com/jessevdk/go-flags"
 )
 
@@ -23,6 +22,19 @@ func execute() error {
 		}
 		os.Exit(1)
 	}
-	fmt.Printf("%+v", opts)
-	return errors.New("not yet implemented")
+
+	if err := opts.Validate(); err != nil {
+		return err
+	}
+
+	f, err := os.Create(string(opts.Args.File))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	SVG := svg.New(f)
+
+	opts.LayoutArena(SVG)
+
+	return nil
 }
