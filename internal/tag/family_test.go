@@ -182,7 +182,7 @@ func (s *FamilySuite) TestTagRendering() {
 		expected := requirePngGrayImage(&(s.Suite), expectedImagePath)
 		family, err := GetFamily(name)
 		s.Require().NoError(err, comment)
-		s.Equal(expected, family.BuildTag(0), comment)
+		s.Equal(expected, family.RenderTag(0), comment)
 	}
 
 }

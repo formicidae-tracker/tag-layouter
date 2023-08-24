@@ -8,15 +8,23 @@ import (
 	"strings"
 )
 
+// A Polygon is defined by its foreground color and the ordered list
+// of its vertices.
 type Polygon struct {
 	Color    color.Color
 	Vertices []image.Point
 }
 
+// Implements fmt.Stringer
 func (p Polygon) String() string {
 	return fmt.Sprintf("{ Color: %s, Vertices: %s}", p.Color, p.Vertices)
 }
 
+// BuildPolygons takes a monochromatic image, and returns the polygon
+// that compose it. Its assumes background is white and foreground is
+// black, as for a printer that would deposite black ink on white
+// paper. Thus any pixel outside of the list of polygons should be
+// considered to be rendered white.
 func BuildPolygons(img *image.Gray) []Polygon {
 	return newPathBuilder(img).buildPaths()
 }

@@ -206,7 +206,7 @@ func (s *PathSuite) testTagFamily(name string) {
 }
 
 func (s *PathSuite) testTagRendering(family *Family, i int) {
-	img := family.BuildTag(i)
+	img := family.RenderTag(i)
 	polygons := BuildPolygons(img)
 
 	rendered := s.renderTagFromPolygons(polygons, img.Rect)

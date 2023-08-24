@@ -24,16 +24,32 @@ import (
 	"unsafe"
 )
 
+// A Family defines how tags are defined: their size, the nuuber of
+// available codes, and how it should be
+// rendered. <Family.RenderTag>() can be used to produce monochromatic
+// image.GrayImage that represent the tag.
 type Family struct {
-	Codes          []uint64
-	NBits          int
-	LocationX      []int
-	LocationY      []int
-	Inside         []bool
-	Name           string
-	Hamming        int
-	TotalWidth     int
-	WidthAtBorder  int
+	// The list of codes available in the family.
+	Codes []uint64
+	// Number of coding bits in the family
+	NBits int
+	// X location of coding bit number i
+	LocationX []int
+	// Y location of coding bit number i
+	LocationY []int
+	// True if the bit is inside the border or outside the border
+	Inside []bool
+	// Canonical name of the family
+	Name string
+	//  Minimal Hamming distance between any two code in the family:
+	//  The higher, the better.
+	Hamming int
+	// Length size of the total tag in pixel
+	TotalWidth int
+	// Length size at the white/black tag border.
+	WidthAtBorder int
+	// If true, the outside border is black and the inside border is
+	// white.
 	ReversedBorder bool
 }
 
@@ -114,6 +130,8 @@ func init() {
 
 var allocated = make(map[string]*Family)
 
+// GetFamily, returns a Family given its canonical name. It may return
+// an error if the canonical name is unknown.
 func GetFamily(name string) (*Family, error) {
 	if alreadyAllocated, ok := allocated[name]; ok == true {
 		return alreadyAllocated, nil
@@ -128,7 +146,12 @@ func GetFamily(name string) (*Family, error) {
 	return res, nil
 }
 
-func (f *Family) BuildTag(n int) *image.Gray {
+// RenderTag renders in a monochromatic image.GrayImage a tag given its code index.
+//
+// The rendered image has a size of (.TotalWidth,.TotalWidth) in
+// pixel, and pixel value are either 0xff (background value) or 0x00
+// (foreground value).
+func (f *Family) RenderTag(n int) *image.Gray {
 	res := image.NewGray(image.Rect(0, 0, f.TotalWidth, f.TotalWidth))
 	offset := (f.TotalWidth - f.WidthAtBorder) / 2
 	inside := image.Rect(offset, offset, offset+f.WidthAtBorder, offset+f.WidthAtBorder)
