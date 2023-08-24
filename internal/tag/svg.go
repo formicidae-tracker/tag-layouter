@@ -39,7 +39,7 @@ func buildSVGPath(points []image.Point) string {
 
 	coords := make([]string, len(points))
 	for i := range points {
-		coords[i] = fmt.Sprintf("%d %d", points[i].X, points[i].Y)
+		coords[i] = fmt.Sprintf("%d,%d", points[i].X, points[i].Y)
 	}
 	return "M " + strings.Join(coords, " L ") + " z"
 
