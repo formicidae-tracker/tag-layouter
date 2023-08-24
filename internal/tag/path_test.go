@@ -23,6 +23,17 @@ func TestPathSuite(t *testing.T) {
 	suite.Run(t, new(PathSuite))
 }
 
+type Path [][]image.Point
+
+func (p Path) String() string {
+	res := []string{}
+	for _, pp := range p {
+		res = append(res, fmt.Sprintf("%s", pp))
+	}
+	return strings.Join(res, "\n")
+
+}
+
 func renderImage(img *image.Gray) string {
 	res := "\n┌" + strings.Repeat("─", 2*img.Rect.Dx()) + "┐"
 	for y := 0; y < img.Rect.Dy(); y++ {
@@ -55,7 +66,7 @@ func (s *PathSuite) requireGrayImage(img []uint8) *image.Gray {
 func (s *PathSuite) testPathBuilding(img []uint8, expected [][]image.Point) {
 	gray := s.requireGrayImage(img)
 	path := BuildPath(gray)
-	s.Equal(expected, path)
+	s.Equalf(expected, path, "actual: %s\nexpected: %s", Path(path), Path(expected))
 }
 
 func (s *PathSuite) TestSimplePolygonGeneration() {

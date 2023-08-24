@@ -1,8 +1,10 @@
 package tag
 
 import (
+	"fmt"
 	"image"
-	"image/color"
+	"io"
+	"strings"
 )
 
 type direction int
@@ -76,12 +78,16 @@ func (b *pathBuilder) MarkVisited(p image.Point) {
 	if p.In(b.visited.Rect) == false {
 		return
 	}
-	b.visited.SetGray(p.X, p.Y, color.Gray{Y: 1})
+	b.visited.Pix[b.visited.PixOffset(p.X, p.Y)] += 1
 }
 
 func (b *pathBuilder) FindFirstUpEdge(start image.Point) image.Point {
 	for y := max(b.image.Rect.Min.Y, start.Y); y < b.image.Rect.Max.Y; y++ {
 		for x := max(b.image.Rect.Min.X, start.X); x < b.image.Rect.Max.X; x++ {
+			start.X = b.image.Rect.Min.X
+			//pos := image.Point{x, y}
+			//log.Printf("Looking at %s", pos)
+			//b.formatVisited(log.Writer(), pos)
 			p := image.Pt(x, y)
 			if b.Visited(p) == true {
 				continue
@@ -97,11 +103,45 @@ func (b *pathBuilder) FindFirstUpEdge(start image.Point) image.Point {
 	return b.image.Rect.Max
 }
 
+type drawState struct {
+	Black   bool
+	Current bool
+}
+
+var colorCode = map[drawState]string{
+	{Black: false, Current: false}: "30;47",
+	{Black: false, Current: true}:  "30;46",
+	{Black: true, Current: false}:  "37;40",
+	{Black: true, Current: true}:   "36;40",
+}
+
+func (b *pathBuilder) formatVisited(w io.Writer, pos image.Point) {
+	fmt.Fprintln(w, "┌"+strings.Repeat("─", 2*b.visited.Rect.Dx())+"┐")
+	for y := 0; y < b.visited.Rect.Dy(); y++ {
+		line := "│"
+		for x := 0; x < b.visited.Rect.Dx(); x++ {
+
+			v := b.visited.GrayAt(x, y).Y
+			isCurrent := pos == image.Point{x, y}
+			isBlack := b.image.GrayAt(x, y).Y == 0xff
+
+			line += fmt.Sprintf("\033[%sm%2d", colorCode[drawState{Black: isBlack, Current: isCurrent}], v)
+
+		}
+		line += "\033[m│"
+		fmt.Fprintln(w, line)
+	}
+	fmt.Fprintln(w, "└"+strings.Repeat("─", 2*b.visited.Rect.Dx())+"┘")
+
+}
+
 func (b *pathBuilder) buildPath(pos image.Point) []image.Point {
 	insideColor := b.At(pos)
 	direction := up
 	res := []image.Point{}
 	for {
+		//log.Printf("%s", res)
+		//b.formatVisited(log.Writer(), pos)
 		rel := relativeVectors[direction]
 		front := pos.Add(rel.Front)
 		frontIsInside := b.At(front) == insideColor
