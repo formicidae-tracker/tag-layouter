@@ -54,7 +54,7 @@ func (s *SVGSuite) TestBuildPath() {
      style="background-color:#ffffff;"
      xmlns="http://www.w3.org/2000/svg"
      xmlns:xlink="http://www.w3.org/1999/xlink">
-<path d="M0 0 L3 0 3 3 0 3 z M1 1 L2 1 2 2 1 2 z" style="fill:#000000;" />
+<path d="M0 0 L3 0 3 3 0 3 z M1 1 L2 1 2 2 1 2 z" style="fill:#000000;fill-rule:evenodd" />
 </svg>
 `,
 		},

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"image"
 	"math"
 	"math/rand"
 
@@ -35,8 +36,10 @@ func (o Options) LayoutArena(SVG *svg.SVG) error {
 
 	fmt.Fprintln(SVG.Writer, `<rect width="100%" height="100%" style="fill:#fff" />`)
 
-	if err := o.layoutBorder(SVG); err != nil {
+	if cleanUp, err := o.layoutBorder(SVG); err != nil {
 		return err
+	} else {
+		defer cleanUp()
 	}
 
 	if err := o.layoutTags(SVG); err != nil {
@@ -47,11 +50,11 @@ func (o Options) LayoutArena(SVG *svg.SVG) error {
 
 }
 
-func (o Options) layoutBorder(SVG *svg.SVG) error {
+func (o Options) layoutBorder(SVG *svg.SVG) (func(), error) {
 
 	if o.ArenaSize.Width >= o.PaperSize.Width ||
 		o.ArenaSize.Height >= o.PaperSize.Height {
-		return fmt.Errorf("incompatible paper size (%s) and arena size (%s): the arena must fit on the paper",
+		return nil, fmt.Errorf("incompatible paper size (%s) and arena size (%s): the arena must fit on the paper",
 			o.PaperSize, o.ArenaSize)
 	}
 
@@ -62,7 +65,7 @@ func (o Options) layoutBorder(SVG *svg.SVG) error {
 
 	border := min(xMin, yMin) / 2
 	if border <= 0.0 {
-		return nil
+		return func() {}, nil
 	}
 
 	points := []tag.PointF[float64]{
@@ -76,9 +79,11 @@ func (o Options) layoutBorder(SVG *svg.SVG) error {
 		{X: xMin, Y: yMax},
 	}
 
-	SVG.Path(tag.BuildSVGD(points[:4])+" "+tag.BuildSVGD(points[4:]), `style="fill:#7f7f7f"`)
+	SVG.Path(tag.BuildSVGPathDataF(points[:4])+" "+tag.BuildSVGPathDataF(points[4:]), `style="fill:#7f7f7f;fill-rule:evenodd"`)
 
-	return nil
+	SVG.Gtransform(fmt.Sprintf("translate(%g,%g)", xMin+o.Family.SizeMM/2, yMin+o.Family.SizeMM/2))
+
+	return SVG.Gend, nil
 }
 
 func (o Options) layoutTags(SVG *svg.SVG) error {
@@ -91,7 +96,7 @@ func (o Options) layoutTags(SVG *svg.SVG) error {
 
 	positions := make([]tag.PointF[float64], 0, o.Number)
 
-	scale := o.Family.SizeMM / tag.PixelToMM(o.DPI, o.Family.Family.TotalWidth)
+	scale := o.Family.SizeMM / float64(o.Family.Family.TotalWidth)
 
 	touchesAny := func(p tag.PointF[float64]) bool {
 		radius2 := 3 * o.Family.SizeMM
@@ -117,18 +122,42 @@ func (o Options) layoutTags(SVG *svg.SVG) error {
 			}
 		}
 		positions = append(positions, pos)
+	}
 
-		o.layoutTag(SVG, indexes[i], pos, scale)
+	for i := range positions {
+		o.layoutLabel(SVG, indexes[i], positions[i], scale)
+	}
+
+	for i := range positions {
+		o.layoutTag(SVG, indexes[i], positions[i], scale)
 	}
 
 	return nil
 }
 
+func (o Options) layoutLabel(SVG *svg.SVG, idx int, pos tag.PointF[float64], scale float64) {
+	s := o.Family.Family.TotalWidth
+
+	SVG.Gtransform(fmt.Sprintf("translate(%g,%g),scale(%g)", pos.X, pos.Y, scale))
+	defer SVG.Gend()
+
+	SVG.Text(int(1.5*float64(s)), int(1.5*float64(s)), fmt.Sprintf("0x%04x", idx))
+
+}
+
 func (o Options) layoutTag(SVG *svg.SVG, idx int, pos tag.PointF[float64], scale float64) {
 	angle := rand.Float64() * 360.0
+	s := o.Family.Family.TotalWidth
 
-	SVG.Gtransform(fmt.Sprintf("translate(%g,%g),rotate(%g),scale(%f)", pos.X, pos.Y, angle, scale))
+	SVG.Gtransform(fmt.Sprintf("translate(%g,%g)", pos.X, pos.Y))
 	defer SVG.Gend()
+
+	SVG.Gtransform(fmt.Sprintf("rotate(%g),scale(%g)", angle, scale))
+	defer SVG.Gend()
+	outlinePoints := []image.Point{
+		{-2, -2}, {s / 2, -s/2 - 2}, {s + 2, -2}, {s + 2, s + 2}, {-2, s + 2},
+	}
+	SVG.Path(tag.BuildSVGPathData(outlinePoints), `style="stroke:#7f7f7f;fill:white"`)
 
 	tag.RenderToSVG(SVG, tag.BuildPolygons(o.Family.Family.RenderTag(idx)))
 }

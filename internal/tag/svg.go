@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	svg "github.com/ajstarks/svgo"
+	"golang.org/x/exp/constraints"
 )
 
 func toHex(c color.Color) string {
@@ -24,18 +25,18 @@ func RenderToSVG(SVG *svg.SVG, polygons []Polygon) {
 	paths := make([]string, len(polygons))
 
 	for i := range polygons {
-		paths[i] = buildSVGPath(polygons[i].Vertices)
+		paths[i] = BuildSVGPathData(polygons[i].Vertices)
 	}
 
 	SVG.Path(strings.Join(paths, " "),
-		fmt.Sprintf("style=\"fill:%s;\"", toHex(polygons[0].Color)))
+		fmt.Sprintf("style=\"fill:%s;fill-rule:evenodd\"", toHex(polygons[0].Color)))
 }
 
-type PointF[T float32 | float64] struct {
+type PointF[T constraints.Float] struct {
 	X, Y T
 }
 
-func BuildSVGD[T float32 | float64](points []PointF[T]) string {
+func BuildSVGPathDataF[T constraints.Float](points []PointF[T]) string {
 	if len(points) < 3 {
 		return ""
 	}
@@ -46,7 +47,7 @@ func BuildSVGD[T float32 | float64](points []PointF[T]) string {
 	return "M" + strings.Join(coords[:2], " L") + " " + strings.Join(coords[2:], " ") + " z"
 }
 
-func buildSVGPath(points []image.Point) string {
+func BuildSVGPathData(points []image.Point) string {
 
 	if len(points) < 3 {
 		return ""
