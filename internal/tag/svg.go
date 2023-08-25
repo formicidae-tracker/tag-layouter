@@ -36,26 +36,26 @@ type PointF[T float32 | float64] struct {
 }
 
 func BuildSVGD[T float32 | float64](points []PointF[T]) string {
-	if len(points) < 2 {
+	if len(points) < 3 {
 		return ""
 	}
 	coords := make([]string, len(points))
 	for i, p := range points {
-		coords[i] = fmt.Sprintf("%g,%g", p.X, p.Y)
+		coords[i] = fmt.Sprintf("%g %g", p.X, p.Y)
 	}
-	return "M " + strings.Join(coords, " L ") + " z"
+	return "M" + strings.Join(coords[:2], " L") + " " + strings.Join(coords[2:], " ") + " z"
 }
 
 func buildSVGPath(points []image.Point) string {
 
-	if len(points) < 2 {
+	if len(points) < 3 {
 		return ""
 	}
 
 	coords := make([]string, len(points))
 	for i := range points {
-		coords[i] = fmt.Sprintf("%d,%d", points[i].X, points[i].Y)
+		coords[i] = fmt.Sprintf("%d %d", points[i].X, points[i].Y)
 	}
-	return "M " + strings.Join(coords, " L ") + " z"
+	return "M" + strings.Join(coords[:2], " L") + " " + strings.Join(coords[2:], " ") + " z"
 
 }

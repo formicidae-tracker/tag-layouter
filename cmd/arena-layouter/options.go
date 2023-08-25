@@ -29,9 +29,11 @@ func (o Options) LayoutArena(SVG *svg.SVG) error {
 		return fmt.Errorf("invalid paper size '%s': sub-millimeter paper size are not supported", o.PaperSize)
 	}
 
-	SVG.Startunit(int(o.PaperSize.Width), int(o.PaperSize.Height), "mm",
-		`style="background-color:#fff;"`)
+	SVG.StartviewUnit(int(o.PaperSize.Width), int(o.PaperSize.Height), "mm",
+		0, 0, int(o.PaperSize.Width), int(o.PaperSize.Height))
 	defer SVG.End()
+
+	fmt.Fprintln(SVG.Writer, `<rect width="100%" height="100%" style="fill:#fff" />`)
 
 	if err := o.layoutBorder(SVG); err != nil {
 		return err
@@ -60,7 +62,7 @@ func (o Options) layoutBorder(SVG *svg.SVG) error {
 
 	border := min(xMin, yMin) / 2
 	if border <= 0.0 {
-		return
+		return nil
 	}
 
 	points := []tag.PointF[float64]{
