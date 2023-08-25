@@ -12,11 +12,11 @@ import (
 )
 
 type Options struct {
-	Family    tag.FamilyBlock `short:"t" long:"family-and-size" description:"Family and size to use. format: 'name:size:begin-end'" required:"yes"`
-	Number    int             `short:"n" long:"number" description:"Number of tags to display in an arena" required:"yes" `
-	PaperSize tag.Size        `short:"P" long:"paper-size" description:"Output size to use in mm" default:"210.0x297.0"`
-	ArenaSize tag.Size        `short:"A" long:"arena-size" description:"Arena size to use in mm" default:"180x220"`
-	DPI       int             `short:"d" long:"dpi" description:"DPI to use" default:"300"`
+	FamilyBlock tag.FamilyBlock `short:"t" long:"family-and-size" description:"Family and size to use. format: 'name:size:begin-end'" required:"yes"`
+	Number      int             `short:"n" long:"number" description:"Number of tags to display in an arena" required:"yes" `
+	PaperSize   tag.Size        `short:"P" long:"paper-size" description:"Output size to use in mm" default:"210.0x297.0"`
+	ArenaSize   tag.Size        `short:"A" long:"arena-size" description:"Arena size to use in mm" default:"180x220"`
+	DPI         int             `short:"d" long:"dpi" description:"DPI to use" default:"300"`
 
 	Args struct {
 		File flags.Filename
@@ -81,25 +81,25 @@ func (o Options) layoutBorder(SVG *svg.SVG) (func(), error) {
 
 	SVG.Path(tag.BuildSVGPathDataF(points[:4])+" "+tag.BuildSVGPathDataF(points[4:]), `style="fill:#7f7f7f;fill-rule:evenodd"`)
 
-	SVG.Gtransform(fmt.Sprintf("translate(%g,%g)", xMin+o.Family.SizeMM/2, yMin+o.Family.SizeMM/2))
+	SVG.Gtransform(fmt.Sprintf("translate(%g,%g)", xMin+o.FamilyBlock.SizeMM/2, yMin+o.FamilyBlock.SizeMM/2))
 
 	return SVG.Gend, nil
 }
 
 func (o Options) layoutTags(SVG *svg.SVG) error {
-	if o.Number > len(o.Family.Family.Codes) {
+	if o.Number > len(o.FamilyBlock.Family.Codes) {
 		return fmt.Errorf("invalid number of tag %d: it must be smaller than the number of tag in '%s' (%d)",
-			o.Number, o.Family.Family.Name, len(o.Family.Family.Codes))
+			o.Number, o.FamilyBlock.Family.Name, len(o.FamilyBlock.Family.Codes))
 	}
 
-	indexes := rand.Perm(len(o.Family.Family.Codes))[:o.Number]
+	indexes := rand.Perm(len(o.FamilyBlock.Family.Codes))[:o.Number]
 
 	positions := make([]tag.PointF[float64], 0, o.Number)
 
-	scale := o.Family.SizeMM / float64(o.Family.Family.TotalWidth)
+	scale := o.FamilyBlock.SizeMM / float64(o.FamilyBlock.Family.TotalWidth)
 
 	touchesAny := func(p tag.PointF[float64]) bool {
-		radius2 := 3 * o.Family.SizeMM
+		radius2 := 3 * o.FamilyBlock.SizeMM
 		radius2 *= radius2
 		for _, pos := range positions {
 			dX := pos.X - p.X
@@ -115,8 +115,8 @@ func (o Options) layoutTags(SVG *svg.SVG) error {
 	for i := 0; i < o.Number; i++ {
 		var pos tag.PointF[float64]
 		for {
-			pos.X = rand.Float64() * (o.ArenaSize.Width - o.Family.SizeMM)
-			pos.Y = rand.Float64() * (o.ArenaSize.Height - o.Family.SizeMM)
+			pos.X = rand.Float64() * (o.ArenaSize.Width - o.FamilyBlock.SizeMM)
+			pos.Y = rand.Float64() * (o.ArenaSize.Height - o.FamilyBlock.SizeMM)
 			if touchesAny(pos) == false {
 				break
 			}
@@ -136,7 +136,7 @@ func (o Options) layoutTags(SVG *svg.SVG) error {
 }
 
 func (o Options) layoutLabel(SVG *svg.SVG, idx int, pos tag.PointF[float64], scale float64) {
-	s := o.Family.Family.TotalWidth
+	s := o.FamilyBlock.Family.TotalWidth
 
 	SVG.Gtransform(fmt.Sprintf("translate(%g,%g),scale(%g)", pos.X, pos.Y, scale))
 	defer SVG.Gend()
@@ -147,7 +147,7 @@ func (o Options) layoutLabel(SVG *svg.SVG, idx int, pos tag.PointF[float64], sca
 
 func (o Options) layoutTag(SVG *svg.SVG, idx int, pos tag.PointF[float64], scale float64) {
 	angle := rand.Float64() * 360.0
-	s := o.Family.Family.TotalWidth
+	s := o.FamilyBlock.Family.TotalWidth
 
 	SVG.Gtransform(fmt.Sprintf("translate(%g,%g)", pos.X, pos.Y))
 	defer SVG.Gend()
@@ -159,5 +159,5 @@ func (o Options) layoutTag(SVG *svg.SVG, idx int, pos tag.PointF[float64], scale
 	}
 	SVG.Path(tag.BuildSVGPathData(outlinePoints), `style="stroke:#7f7f7f;fill:white"`)
 
-	tag.RenderToSVG(SVG, tag.BuildPolygons(o.Family.Family.RenderTag(idx)))
+	tag.RenderToSVG(SVG, tag.BuildPolygons(o.FamilyBlock.Family.RenderTag(idx)))
 }

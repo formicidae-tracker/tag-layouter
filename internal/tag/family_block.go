@@ -125,3 +125,19 @@ func (c FamilyBlock) String() string {
 
 	return familyAndSize + ":" + strings.Join(ranges, ";")
 }
+
+func (c FamilyBlock) LabelWithSize(size float64) string {
+	return fmt.Sprintf("%s %.3gmm", c.Family.Name, size)
+}
+
+func (c FamilyBlock) LabelWithDesiredSize() string {
+	return c.LabelWithSize(c.SizeMM)
+}
+
+func (c FamilyBlock) NumberOfTags() int {
+	count := 0
+	for _, r := range c.Ranges {
+		count += r.Len()
+	}
+	return count
+}
