@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	svg "github.com/ajstarks/svgo"
 	"github.com/jessevdk/go-flags"
@@ -23,8 +25,8 @@ func execute() error {
 		os.Exit(1)
 	}
 
-	if err := opts.Validate(); err != nil {
-		return err
+	if filepath.Ext(string(opts.Args.File)) != ".svg" {
+		return fmt.Errorf("invalid filepath '%s': only SVG are supported, filepath must end with '.svg'", opts.Args.File)
 	}
 
 	f, err := os.Create(string(opts.Args.File))
@@ -34,7 +36,5 @@ func execute() error {
 	defer f.Close()
 	SVG := svg.New(f)
 
-	opts.LayoutArena(SVG)
-
-	return nil
+	return opts.LayoutArena(SVG)
 }

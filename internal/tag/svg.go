@@ -31,6 +31,21 @@ func RenderToSVG(SVG *svg.SVG, polygons []Polygon) {
 		fmt.Sprintf("style=\"fill:%s;\"", toHex(polygons[0].Color)))
 }
 
+type PointF[T float32 | float64] struct {
+	X, Y T
+}
+
+func BuildSVGD[T float32 | float64](points []PointF[T]) string {
+	if len(points) < 2 {
+		return ""
+	}
+	coords := make([]string, len(points))
+	for i, p := range points {
+		coords[i] = fmt.Sprintf("%g,%g", p.X, p.Y)
+	}
+	return "M " + strings.Join(coords, " L ") + " z"
+}
+
 func buildSVGPath(points []image.Point) string {
 
 	if len(points) < 2 {
