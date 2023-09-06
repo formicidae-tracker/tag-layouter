@@ -1,22 +1,28 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"image/color"
+	"image/draw"
 
 	"gihtub.com/formicidae-tracker/tag-layouter/internal/tag"
 	svg "github.com/ajstarks/svgo"
+	"github.com/golang/freetype"
+	"github.com/golang/freetype/truetype"
+	"golang.org/x/image/font/gofont/gomono"
 )
 
 type Drawer interface {
 	TranslateScale(image.Point, int)
 	EndTranslate()
 
-	DrawRectangle(image.Rectangle, color.Color)
-	Label(p image.Point, s string, size int, c color.Color)
+	DrawRectangle(image.Rectangle, color.Gray)
+	Label(p image.Point, s string, size int, c color.Gray)
 }
 
 type VectorDrawer interface {
+	Drawer
 	DrawPolygons([]tag.Polygon)
 }
 
@@ -27,7 +33,7 @@ func drawTag(drawer Drawer, img *image.Gray) {
 		}
 		y := i / img.Stride
 		x := i - y
-		drawer.DrawRectangle(image.Rect(x, y, 1, 1), color.Black)
+		drawer.DrawRectangle(image.Rect(x, y, x+1, y+1), color.Gray{})
 	}
 }
 
@@ -36,12 +42,35 @@ func vectorDrawTag(drawer VectorDrawer, img *image.Gray) {
 	drawer.DrawPolygons(polygons)
 }
 
-type svgDrawer *svg.SVG
-
 type imageDrawer struct {
 	img       *image.Gray
 	scales    []int
 	positions []image.Point
+
+	DPI int
+	fd  *freetype.Context
+}
+
+func NewImageDrawer(width, height float64, DPI int) (Drawer, error) {
+	img := image.NewGray(image.Rect(0, 0,
+		tag.MMToPixel(DPI, width), tag.MMToPixel(DPI, height)))
+	draw.Draw(img, img.Bounds(), image.NewUniform(color.White), image.Point{}, draw.Src)
+
+	monofont, err := truetype.Parse(gomono.TTF)
+	if err != nil {
+		return nil, err
+	}
+	fd := freetype.NewContext()
+	fd.SetDPI(float64(DPI))
+	fd.SetFont(monofont)
+	fd.SetClip(img.Bounds())
+	fd.SetDst(img)
+
+	return &imageDrawer{
+		img: img,
+		DPI: DPI,
+		fd:  fd,
+	}, nil
 }
 
 func (d *imageDrawer) TranslateScale(pos image.Point, scale int) {
@@ -49,7 +78,7 @@ func (d *imageDrawer) TranslateScale(pos image.Point, scale int) {
 	d.positions = append(d.positions, pos)
 }
 
-func (d *imageDrawer) EndTranslate(pos image.Point, scale int) {
+func (d *imageDrawer) EndTranslate() {
 	if min(len(d.scales), len(d.positions)) == 0 {
 		return
 	}
@@ -57,19 +86,69 @@ func (d *imageDrawer) EndTranslate(pos image.Point, scale int) {
 	d.positions = d.positions[:len(d.scales)]
 }
 
-func (d *imageDrawer) DrawRectange(r image.Rectangle, c color.Color) {
-	var pos image.Point
-	scale := 1
-	if min(len(d.scales), len(d.positions)) > 1 {
-		pos = d.positions[len(d.positions)-1]
-		scale = d.scales[len(d.scales)-1]
+func (d *imageDrawer) DrawRectangle(r image.Rectangle, c color.Gray) {
+
+	for i := min(len(d.scales), len(d.positions)) - 1; i > 0; i-- {
+		// apply stack of translate + scale (we have to apply in reverse order)
+		pos := d.positions[i]
+		scale := d.scales[i]
+		r.Min.X *= scale
+		r.Min.Y *= scale
+		r.Max.X *= scale
+		r.Max.Y *= scale
+		r = r.Add(pos)
 	}
 
-	r = r.Add(pos)
-	for y := scale * r.Min.Y; y < scale*r.Max.Y; y++ {
-		for x := scale * r.Min.X; x < scale*r.Max.X; x++ {
-
+	//filling the rect
+	for y := r.Min.Y; y < r.Max.Y; y++ {
+		for x := r.Min.X; x < r.Max.X; x++ {
+			d.img.SetGray(x, y, c)
 		}
 	}
+}
 
+func (d *imageDrawer) Label(p image.Point, s string, size int, c color.Gray) {
+	d.fd.SetSrc(image.NewUniform(c))
+	fontHeightPt := 72 / 25.4 * tag.PixelToMM(d.DPI, size)
+	d.fd.SetFontSize(fontHeightPt)
+
+	pt := freetype.Pt(p.X, p.Y+int(d.fd.PointToFixed(fontHeightPt)>>6))
+	advance, _ := d.fd.DrawString(s, pt)
+
+	for i := pt.X.Ceil(); i < advance.X.Ceil(); i++ {
+		for j := p.Y; j <= pt.Y.Ceil()+1; j++ {
+			if d.img.GrayAt(i, j).Y < 200 {
+				d.img.Set(i, j, color.Black)
+			} else {
+				d.img.Set(i, j, color.White)
+			}
+		}
+	}
+}
+
+type svgDrawer svg.SVG
+
+func (d *svgDrawer) TranslateScale(p image.Point, scale int) {
+	(*svg.SVG)(d).Gtransform(fmt.Sprintf("translate(%d,%d),scale(%d)", p.X, p.Y, scale))
+}
+
+func (d *svgDrawer) EndTranslate() {
+	(*svg.SVG)(d).Gend()
+}
+
+func (d *svgDrawer) DrawRectangle(r image.Rectangle, c color.Gray) {
+	(*svg.SVG)(d).Rect(r.Min.X, r.Min.Y, r.Dx(), r.Dy(),
+		fmt.Sprintf(`style="fill:%s"`, tag.ColorToHex(c)))
+}
+
+func (d *svgDrawer) Label(p image.Point, s string, size int, c color.Gray) {
+	(*svg.SVG)(d).Text(p.X, p.Y+size, s, fmt.Sprintf("font-size:%dpx;font-family:Roboto Mono", size))
+}
+
+func (d *svgDrawer) DrawPolygons(polygons []tag.Polygon) {
+	tag.RenderToSVG((*svg.SVG)(d), polygons)
+}
+
+func NewSVGDrawer(SVG *svg.SVG, width, height float64, DPI int, useMM bool) VectorDrawer {
+	return (*svgDrawer)(SVG)
 }

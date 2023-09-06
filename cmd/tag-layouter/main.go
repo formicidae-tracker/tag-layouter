@@ -2,16 +2,24 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"image"
+	"image/jpeg"
+	"image/png"
+	"io"
 	"log"
 	"math"
 	"os"
+	"path/filepath"
 	"sort"
 
 	"log/slog"
 
 	"gihtub.com/formicidae-tracker/tag-layouter/internal/tag"
+	svg "github.com/ajstarks/svgo"
 	"github.com/jessevdk/go-flags"
+	"golang.org/x/image/tiff"
 )
 
 // A LevelHandler wraps a Handler with an Enabled method
@@ -92,12 +100,24 @@ func execute() error {
 
 	app.SetupLogger()
 
-	_, err := app.Layout()
+	columns, err := app.Layout()
 	if err != nil {
 		return err
 	}
 
-	return nil
+	drawer, close, err := app.CreateDrawer()
+
+	for _, column := range columns {
+		for _, block := range column.Blocks {
+			label := block.LabelWithDesiredSize()
+			if app.LabelRoundedSize == true {
+				label = block.LabelWithSize(tag.PixelToMM(app.DPI, block.ActualTagWidth))
+			}
+			block.Render(drawer, label)
+		}
+	}
+
+	return close()
 }
 
 func (a App) SetupLogger() {
@@ -290,4 +310,75 @@ func (a App) ComputeFamilySize(block tag.FamilyBlock, columnWidthDot int) Placed
 		Skips:             skips,
 		DPI:               a.DPI,
 	}
+}
+
+func (app App) CreateDrawer() (Drawer, func() error, error) {
+	ext := filepath.Ext(string(app.Args.File))
+	switch ext {
+	case ".jpg":
+		return app.createJPEGDrawer()
+	case ".jpeg":
+		return app.createJPEGDrawer()
+	case ".tiff":
+		return app.createTIFFDrawer()
+	case ".png":
+		return app.createPNGDrawer()
+	case ".svg":
+		return app.createSVGDrawer()
+	default:
+		return nil, nil, fmt.Errorf("unsupported extension '%s' for filepath '%s'", ext, app.Args.File)
+	}
+
+}
+
+func (app App) createImageDrawer(encoder func(w io.Writer, img image.Image) error) (Drawer, func() error, error) {
+	file, err := os.Create(string(app.Args.File))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	drawer, err := NewImageDrawer(app.PaperSize.Width, app.PaperSize.Height, app.DPI)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	encodeAndClose := func() error {
+		var errs []error
+		errs = append(errs, encoder(file, drawer.(*imageDrawer).img))
+		errs = append(errs, file.Close())
+		return errors.Join(errs...)
+	}
+	return drawer, encodeAndClose, nil
+}
+
+func (app App) createJPEGDrawer() (Drawer, func() error, error) {
+	return app.createImageDrawer(func(w io.Writer, img image.Image) error {
+		return jpeg.Encode(w, img, nil)
+	})
+}
+
+func (app App) createTIFFDrawer() (Drawer, func() error, error) {
+	return app.createImageDrawer(func(w io.Writer, img image.Image) error {
+		return tiff.Encode(w, img, nil)
+	})
+}
+
+func (app App) createPNGDrawer() (Drawer, func() error, error) {
+	return app.createImageDrawer(func(w io.Writer, img image.Image) error {
+		return png.Encode(w, img)
+	})
+}
+
+func (app App) createSVGDrawer() (VectorDrawer, func() error, error) {
+	file, err := os.Create(string(app.Args.File))
+	if err != nil {
+		return nil, nil, err
+	}
+	svg := svg.New(file)
+	drawer := NewSVGDrawer(svg, app.PaperSize.Width, app.PaperSize.Height, app.DPI, false)
+	close := func() error {
+		svg.End()
+		return file.Close()
+	}
+	return drawer, close, nil
 }

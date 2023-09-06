@@ -10,7 +10,7 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
-func toHex(c color.Color) string {
+func ColorToHex(c color.Color) string {
 	r, g, b, a := c.RGBA()
 	if a == 0xffff {
 		return fmt.Sprintf("#%02x%02x%02x", r>>8, g>>8, b>>8)
@@ -29,7 +29,7 @@ func RenderToSVG(SVG *svg.SVG, polygons []Polygon) {
 	}
 
 	SVG.Path(strings.Join(paths, " "),
-		fmt.Sprintf("style=\"fill:%s;fill-rule:evenodd\"", toHex(polygons[0].Color)))
+		fmt.Sprintf("style=\"fill:%s;fill-rule:evenodd\"", ColorToHex(polygons[0].Color)))
 }
 
 type PointF[T constraints.Float] struct {

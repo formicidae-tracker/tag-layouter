@@ -31,7 +31,7 @@ func (s *SVGSuite) TestColorRendering() {
 
 	for _, d := range testdata {
 		s.Run(d.Expected, func() {
-			s.Equal(toHex(d.Color), d.Expected)
+			s.Equal(ColorToHex(d.Color), d.Expected)
 		})
 	}
 }
