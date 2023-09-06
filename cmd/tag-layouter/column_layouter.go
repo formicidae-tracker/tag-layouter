@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"log/slog"
 	"math"
 
 	"gihtub.com/formicidae-tracker/tag-layouter/internal/tag"
@@ -86,7 +87,13 @@ func (b PlacedBlock) Render(drawer Drawer, label string) error {
 	cutLinePos := (b.ActualBorderWidth - b.CutLineWidth) / 2
 	isFirst := true
 	for _, r := range b.Ranges {
-		for i := r.Begin; i < r.End; i++ {
+		end := r.End
+		if end < 0 {
+			end = len(b.Family.Codes)
+		}
+		slog.Info("Rendering tags", "start", r.Begin, "end", end)
+		for i := r.Begin; i < end; i++ {
+			slog.Debug("rendering tag", "index", i, "code", b.Family.Codes[i])
 			var pos image.Point
 			pos.X = ix*(b.ActualTagWidth+b.ActualBorderWidth) + b.X + b.ActualBorderWidth
 			pos.Y = iy*(b.ActualTagWidth+b.ActualBorderWidth) + b.Y + b.ActualBorderWidth
@@ -137,8 +144,8 @@ func (b PlacedBlock) Render(drawer Drawer, label string) error {
 		}
 	}
 
-	drawer.Label(image.Pt(b.X+b.ActualBorderWidth, b.Y),
-		label, b.ActualTagWidth, color.Gray{255})
+	drawer.Label(image.Pt(b.X+b.ActualBorderWidth, b.Y+b.ActualBorderWidth/2),
+		label, b.ActualTagWidth, color.Gray{0})
 
 	return nil
 }

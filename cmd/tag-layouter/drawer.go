@@ -6,6 +6,8 @@ import (
 	"image/color"
 	"image/draw"
 
+	"log/slog"
+
 	"gihtub.com/formicidae-tracker/tag-layouter/internal/tag"
 	svg "github.com/ajstarks/svgo"
 	"github.com/golang/freetype"
@@ -32,7 +34,7 @@ func drawTag(drawer Drawer, img *image.Gray) {
 			continue
 		}
 		y := i / img.Stride
-		x := i - y
+		x := i - y*img.Stride
 		drawer.DrawRectangle(image.Rect(x, y, x+1, y+1), color.Gray{})
 	}
 }
@@ -52,6 +54,7 @@ type imageDrawer struct {
 }
 
 func NewImageDrawer(width, height float64, DPI int) (Drawer, error) {
+	slog.Info("new image drawer", "width", width, "height", height, "DPI", DPI)
 	img := image.NewGray(image.Rect(0, 0,
 		tag.MMToPixel(DPI, width), tag.MMToPixel(DPI, height)))
 	draw.Draw(img, img.Bounds(), image.NewUniform(color.White), image.Point{}, draw.Src)
@@ -76,6 +79,8 @@ func NewImageDrawer(width, height float64, DPI int) (Drawer, error) {
 func (d *imageDrawer) TranslateScale(pos image.Point, scale int) {
 	d.scales = append(d.scales, scale)
 	d.positions = append(d.positions, pos)
+	slog.Debug("image translate scale", "position", pos, "scale", scale,
+		"positions", d.positions, "scales", d.scales)
 }
 
 func (d *imageDrawer) EndTranslate() {
@@ -87,17 +92,20 @@ func (d *imageDrawer) EndTranslate() {
 }
 
 func (d *imageDrawer) DrawRectangle(r image.Rectangle, c color.Gray) {
-
-	for i := min(len(d.scales), len(d.positions)) - 1; i > 0; i-- {
+	slog.Debug("drawing", "rectangle", r, "color", c)
+	for i := min(len(d.scales), len(d.positions)) - 1; i >= 0; i-- {
 		// apply stack of translate + scale (we have to apply in reverse order)
 		pos := d.positions[i]
 		scale := d.scales[i]
+		slog.Debug("applying", "position", pos, "scale", scale)
+
 		r.Min.X *= scale
 		r.Min.Y *= scale
 		r.Max.X *= scale
 		r.Max.Y *= scale
 		r = r.Add(pos)
 	}
+	slog.Debug("after transform", "rectangle", r)
 
 	//filling the rect
 	for y := r.Min.Y; y < r.Max.Y; y++ {
@@ -108,6 +116,7 @@ func (d *imageDrawer) DrawRectangle(r image.Rectangle, c color.Gray) {
 }
 
 func (d *imageDrawer) Label(p image.Point, s string, size int, c color.Gray) {
+	slog.Debug("labelling", "label", s, "size", size, "at", p, "color", c)
 	d.fd.SetSrc(image.NewUniform(c))
 	fontHeightPt := 72 / 25.4 * tag.PixelToMM(d.DPI, size)
 	d.fd.SetFontSize(fontHeightPt)
@@ -150,5 +159,16 @@ func (d *svgDrawer) DrawPolygons(polygons []tag.Polygon) {
 }
 
 func NewSVGDrawer(SVG *svg.SVG, width, height float64, DPI int, useMM bool) VectorDrawer {
+	if useMM == true {
+		SVG.StartviewUnit(int(width), int(height), "mm", 0, 0, int(width), int(height))
+		SVG.Rect(0, 0, int(width), int(height), `style="fill:white"`)
+	} else {
+		w := tag.MMToPixel(DPI, width)
+		h := tag.MMToPixel(DPI, height)
+		SVG.Startview(w, h,
+			0, 0, w, h)
+		SVG.Rect(0, 0, w, h, `style="fill:white"`)
+	}
+
 	return (*svgDrawer)(SVG)
 }

@@ -134,10 +134,17 @@ func (c FamilyBlock) LabelWithDesiredSize() string {
 	return c.LabelWithSize(c.SizeMM)
 }
 
-func (c FamilyBlock) NumberOfTags() int {
+func (c FamilyBlock) RangeLength(r Range) int {
+	if r.End < 0 {
+		return len(c.Family.Codes) - r.Begin
+	}
+	return r.End - r.Begin
+}
+
+func (c FamilyBlock) Len() int {
 	count := 0
 	for _, r := range c.Ranges {
-		count += r.Len()
+		count += c.RangeLength(r)
 	}
 	return count
 }

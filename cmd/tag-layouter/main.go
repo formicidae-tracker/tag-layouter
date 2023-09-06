@@ -113,6 +113,7 @@ func execute() error {
 			if app.LabelRoundedSize == true {
 				label = block.LabelWithSize(tag.PixelToMM(app.DPI, block.ActualTagWidth))
 			}
+			slog.Info("rendering", "block", block.String())
 			block.Render(drawer, label)
 		}
 	}
@@ -256,6 +257,7 @@ func (a App) Layout() ([]Column, error) {
 			trueTagSizeMM := tag.PixelToMM(a.DPI, block.ActualTagWidth)
 			error := math.Abs(trueTagSizeMM-block.SizeMM) / block.SizeMM * 100.0
 			fmt.Printf("block %s placed in column %d at position %d\n", block, i, j)
+			fmt.Printf("---> tag range:  %s, %d tags\n", block.FamilyBlock, block.FamilyBlock.Len())
 			fmt.Printf("---> tag size: %dpx %ddot.px⁻¹ %.3gmm error: %.2f%%\n",
 				block.Family.TotalWidth,
 				block.ActualTagWidth/block.Family.TotalWidth,
@@ -281,7 +283,7 @@ func (a App) ComputeFamilySize(block tag.FamilyBlock, columnWidthDot int) Placed
 		block.SizeMM, a.TagBorder, a.CutLineRatio, block.Family.TotalWidth)
 
 	skips := len(block.LabelWithDesiredSize())*1/2 + 1
-	nbSlots := block.NumberOfTags() + skips
+	nbSlots := block.Len() + skips
 
 	nbTagsPerRow := (columnWidthDot - actualBorderWidth) / (actualTagWidth + actualBorderWidth)
 	nbRows := nbSlots / nbTagsPerRow
