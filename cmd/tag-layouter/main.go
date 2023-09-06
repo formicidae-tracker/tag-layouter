@@ -12,6 +12,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime/pprof"
 	"sort"
 
 	"log/slog"
@@ -78,6 +79,8 @@ type App struct {
 	DPI              int               `short:"d" long:"dpi" description:"DPI to use" default:"2400"`
 	Verbose          []bool            `short:"V" long:"verbose" description:"increase verbose level"`
 
+	CPUProfile string `long:"cpuprofile" description:"profile CPU usage"`
+
 	Args struct {
 		File flags.Filename
 	} `positional-args:"yes" required:"yes"`
@@ -97,15 +100,20 @@ func execute() error {
 		}
 		os.Exit(1)
 	}
+	closeCPU, err := app.SetUpProfile()
+	if err != nil {
+		return err
+	}
+	defer closeCPU()
 
 	app.SetupLogger()
 
-	columns, err := app.Layout()
+	columns, _, err := app.Layout()
 	if err != nil {
 		return err
 	}
 
-	drawer, close, err := app.CreateDrawer()
+	drawer, closeImage, err := app.CreateDrawer()
 
 	for _, column := range columns {
 		for _, block := range column.Blocks {
@@ -113,12 +121,11 @@ func execute() error {
 			if app.LabelRoundedSize == true {
 				label = block.LabelWithSize(tag.PixelToMM(app.DPI, block.ActualTagWidth))
 			}
-			slog.Info("rendering", "block", block.String())
 			block.Render(drawer, label)
 		}
 	}
 
-	return close()
+	return closeImage()
 }
 
 func (a App) SetupLogger() {
@@ -136,9 +143,9 @@ func (a App) SetupLogger() {
 	log.SetOutput(os.Stdout)
 }
 
-func (a App) Layout() ([]Column, error) {
+func (a App) Layout() ([]Column, int64, error) {
 	if a.Columns < 1 {
-		return nil, fmt.Errorf("invalid number of column %d: must be >=1", a.Columns)
+		return nil, 0, fmt.Errorf("invalid number of column %d: must be >=1", a.Columns)
 	}
 
 	blockMarginDot := tag.MMToPixel(a.DPI, a.BlockMargin)
@@ -208,7 +215,7 @@ func (a App) Layout() ([]Column, error) {
 		}
 
 		if fitted == false {
-			return nil, fmt.Errorf("Could not fit %s in layout", block)
+			return nil, 0, fmt.Errorf("Could not fit %s in layout", block)
 		}
 	}
 
@@ -248,12 +255,13 @@ func (a App) Layout() ([]Column, error) {
 			break
 		}
 		if fitted == false {
-			return nil, fmt.Errorf("Could not fill %s in layout", block)
+			return nil, 0, fmt.Errorf("Could not fill %s in layout", block)
 		}
 	}
-
+	var N int64 = 0
 	for i, col := range columns {
 		for j, block := range col.Blocks {
+			N += int64(block.FamilyBlock.Len())
 			trueTagSizeMM := tag.PixelToMM(a.DPI, block.ActualTagWidth)
 			error := math.Abs(trueTagSizeMM-block.SizeMM) / block.SizeMM * 100.0
 			fmt.Printf("block %s placed in column %d at position %d\n", block, i, j)
@@ -275,7 +283,7 @@ func (a App) Layout() ([]Column, error) {
 		}
 	}
 
-	return columns, nil
+	return columns, N, nil
 }
 
 func (a App) ComputeFamilySize(block tag.FamilyBlock, columnWidthDot int) PlacedBlock {
@@ -383,4 +391,19 @@ func (app App) createSVGDrawer() (VectorDrawer, func() error, error) {
 		return file.Close()
 	}
 	return drawer, close, nil
+}
+
+func (app App) SetUpProfile() (func() error, error) {
+	if len(app.CPUProfile) == 0 {
+		return func() error { return nil }, nil
+	}
+	f, err := os.Create(app.CPUProfile)
+	if err != nil {
+		return nil, fmt.Errorf("could not create cpuprofile file '%s': %w", app.CPUProfile, err)
+	}
+	pprof.StartCPUProfile(f)
+	return func() error {
+		pprof.StopCPUProfile()
+		return nil
+	}, nil
 }

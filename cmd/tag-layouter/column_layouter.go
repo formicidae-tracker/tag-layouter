@@ -8,6 +8,7 @@ import (
 	"math"
 
 	"gihtub.com/formicidae-tracker/tag-layouter/internal/tag"
+	"github.com/schollz/progressbar/v3"
 )
 
 type ColumnLayouter struct {
@@ -73,7 +74,9 @@ type Column struct {
 }
 
 func (b PlacedBlock) Render(drawer Drawer, label string) error {
-	vectorDrawer, ok := drawer.(VectorDrawer)
+
+	pb := progressbar.Default(int64(b.FamilyBlock.Len()),
+		fmt.Sprintf("rendering %s", b))
 
 	scale := b.ActualTagWidth / b.Family.TotalWidth
 	if b.ActualTagWidth%b.Family.TotalWidth != 0 {
@@ -91,61 +94,69 @@ func (b PlacedBlock) Render(drawer Drawer, label string) error {
 		if end < 0 {
 			end = len(b.Family.Codes)
 		}
-		slog.Info("Rendering tags", "start", r.Begin, "end", end)
 		for i := r.Begin; i < end; i++ {
-			slog.Debug("rendering tag", "index", i, "code", b.Family.Codes[i])
-			var pos image.Point
-			pos.X = ix*(b.ActualTagWidth+b.ActualBorderWidth) + b.X + b.ActualBorderWidth
-			pos.Y = iy*(b.ActualTagWidth+b.ActualBorderWidth) + b.Y + b.ActualBorderWidth
-
-			img := b.Family.RenderTag(i)
-
-			drawer.TranslateScale(pos, scale)
-			if ok == true {
-				vectorDrawTag(vectorDrawer, img)
-			} else {
-				drawTag(drawer, img)
-			}
-			drawer.EndTranslate()
-
-			ix += 1
-			if ix >= b.NTagsPerRow {
-				ix = 0
-				iy += 1
-			}
-			if b.CutLineWidth == 0 {
-				continue
-			}
-
-			drawer.DrawRectangle(
-				image.Rect(pos.X+b.ActualTagWidth+cutLinePos, pos.Y,
-					b.CutLineWidth, b.ActualTagWidth),
-				color.Gray{127})
-
-			drawer.DrawRectangle(
-				image.Rect(pos.X, pos.Y+b.ActualTagWidth+cutLinePos,
-					b.ActualTagWidth, b.CutLineWidth),
-				color.Gray{127})
-
-			if ix == 1 || isFirst == true {
-				isFirst = false
-				drawer.DrawRectangle(
-					image.Rect(pos.X-b.CutLineWidth-cutLinePos, pos.Y,
-						b.CutLineWidth, b.ActualTagWidth),
-					color.Gray{127})
-			}
-
-			if iy == 0 || iy == 1 && ix <= b.Skips {
-				drawer.DrawRectangle(
-					image.Rect(pos.X, pos.Y-cutLinePos-b.CutLineWidth,
-						b.ActualTagWidth, b.CutLineWidth),
-					color.Gray{127})
-			}
+			b.renderTag(drawer, i, ix, iy, scale, cutLinePos, isFirst)
+			pb.Add(1)
 		}
 	}
 
+	pb.Close()
 	drawer.Label(image.Pt(b.X+b.ActualBorderWidth, b.Y+b.ActualBorderWidth/2),
 		label, b.ActualTagWidth, color.Gray{0})
 
 	return nil
+}
+
+func (b PlacedBlock) renderTag(drawer Drawer, idx, ix, iy, scale, cutLinePos int, isFirst bool) {
+	vectorDrawer, ok := drawer.(VectorDrawer)
+
+	slog.Debug("rendering tag", "index", idx, "code", b.Family.Codes[idx])
+	var pos image.Point
+	pos.X = ix*(b.ActualTagWidth+b.ActualBorderWidth) + b.X + b.ActualBorderWidth
+	pos.Y = iy*(b.ActualTagWidth+b.ActualBorderWidth) + b.Y + b.ActualBorderWidth
+
+	img := b.Family.RenderTag(idx)
+
+	drawer.TranslateScale(pos, scale)
+	if ok == true {
+		vectorDrawTag(vectorDrawer, img)
+	} else {
+		drawTag(drawer, img)
+	}
+	drawer.EndTranslate()
+
+	ix += 1
+	if ix >= b.NTagsPerRow {
+		ix = 0
+		iy += 1
+	}
+	if b.CutLineWidth == 0 || true {
+		return
+	}
+
+	drawer.DrawRectangle(
+		image.Rect(pos.X+b.ActualTagWidth+cutLinePos, pos.Y,
+			b.CutLineWidth, b.ActualTagWidth),
+		color.Gray{127})
+
+	drawer.DrawRectangle(
+		image.Rect(pos.X, pos.Y+b.ActualTagWidth+cutLinePos,
+			b.ActualTagWidth, b.CutLineWidth),
+		color.Gray{127})
+
+	if ix == 1 || isFirst == true {
+		isFirst = false
+		drawer.DrawRectangle(
+			image.Rect(pos.X-b.CutLineWidth-cutLinePos, pos.Y,
+				b.CutLineWidth, b.ActualTagWidth),
+			color.Gray{127})
+	}
+
+	if iy == 0 || iy == 1 && ix <= b.Skips {
+		drawer.DrawRectangle(
+			image.Rect(pos.X, pos.Y-cutLinePos-b.CutLineWidth,
+				b.ActualTagWidth, b.CutLineWidth),
+			color.Gray{127})
+	}
+
 }

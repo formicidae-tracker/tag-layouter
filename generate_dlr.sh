@@ -52,21 +52,18 @@ layout_one() {
 	do
 		for f in $formats
 		do
-			./tag-layouter -f ${file}_$r.$f \
+			./tag-layouter ${file}_$r.$f \
+						   -V \
+						   --cpuprofile=test_dlr_v4_${r}_${f}.pprof \
 						   --label-rounded-size \
-						   --column-number $columns \
-						   -W 200.02 \
-						   -H 138.5 \
+						   --columns $columns \
+						   -P 200.02x138.5 \
 						   --cut-line-ratio 0.01 \
 						   --individual-tag-border 0.2 \
-						   --family-margin 5.0 \
+						   --block-margin 5.0 \
 						   --dpi $r \
-						   --paper-border 5 \
+						   --margin 5 \
 						   $families_opts
-			if [ $f == "tiff" ]
-			then
-				convert ${file}_$r.$f -units PixelsPerInch -density $r ${file}_$r.$f
-			fi
 		done
 	done
 }
@@ -77,4 +74,5 @@ families="36h10 36h11 Standard41h12"
 sizes="0.5 0.7 0.9 1.1 1.45"
 sizes_queen="$sizes 1.6 2.2"
 
-layout_one "test_dlr_v3" "$resolutions" "$formats" "Standard41h12 36h11" "0.5 0.7 0.9 1.45" "" "2"
+#layout_one "test_dlr_v4" "$resolutions" "$formats" "Standard41h12 36h11" "0.5 0.7 0.9 1.45" "" "2"
+layout_one "test_dlr_v4" "$resolutions" "$formats" "Standard41h12" "1.45" "" "2"

@@ -12,6 +12,7 @@ import (
 	svg "github.com/ajstarks/svgo"
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
+	"github.com/schollz/progressbar/v3"
 	"golang.org/x/image/font/gofont/gomono"
 )
 
@@ -57,7 +58,18 @@ func NewImageDrawer(width, height float64, DPI int) (Drawer, error) {
 	slog.Info("new image drawer", "width", width, "height", height, "DPI", DPI)
 	img := image.NewGray(image.Rect(0, 0,
 		tag.MMToPixel(DPI, width), tag.MMToPixel(DPI, height)))
-	draw.Draw(img, img.Bounds(), image.NewUniform(color.White), image.Point{}, draw.Src)
+
+	w := img.Bounds().Dx()
+	h := img.Bounds().Dy()
+	pb := progressbar.Default(100, "filling background")
+	for i := 0; i < 100; i++ {
+		rect := image.Rect(0, int(float64(h)*(float64(i)/100.0)),
+			w, int(float64(h)*(float64(i+1)/100)))
+		draw.Draw(img, rect, image.NewUniform(color.White), image.Point{}, draw.Src)
+
+		pb.Add(1)
+	}
+	pb.Close()
 
 	monofont, err := truetype.Parse(gomono.TTF)
 	if err != nil {
@@ -107,12 +119,8 @@ func (d *imageDrawer) DrawRectangle(r image.Rectangle, c color.Gray) {
 	}
 	slog.Debug("after transform", "rectangle", r)
 
-	//filling the rect
-	for y := r.Min.Y; y < r.Max.Y; y++ {
-		for x := r.Min.X; x < r.Max.X; x++ {
-			d.img.SetGray(x, y, c)
-		}
-	}
+	draw.Draw(d.img, r, image.NewUniform(c), image.Point{}, draw.Src)
+
 }
 
 func (d *imageDrawer) Label(p image.Point, s string, size int, c color.Gray) {
