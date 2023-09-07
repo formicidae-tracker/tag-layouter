@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"math"
 
-	"gihtub.com/formicidae-tracker/tag-layouter/internal/tag"
+	"github.com/formicidae-tracker/tag-layouter/internal/tag"
 	"github.com/schollz/progressbar/v3"
 )
 

@@ -4,3 +4,4 @@
 *.png
 *.tiff
 /arena-layouter
+/c-to-json-converter

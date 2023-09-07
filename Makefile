@@ -12,8 +12,7 @@ arena-layouter:
 
 check:
 	make -C internal/tag check
-	go test ./cmd/tag-layouter
-	go test ./cmd/arena-layouter
-
+	make -C cmd/tag-layouter check
+	make -C cmd/tag-layouter check
 
 .PHONY: all check tag tag-layouter arena-layouter

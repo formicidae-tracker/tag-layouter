@@ -8,13 +8,15 @@ import (
 
 	"log/slog"
 
-	"gihtub.com/formicidae-tracker/tag-layouter/internal/tag"
 	svg "github.com/ajstarks/svgo"
+	"github.com/formicidae-tracker/tag-layouter/internal/tag"
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
 	"github.com/schollz/progressbar/v3"
 	"golang.org/x/image/font/gofont/gomono"
 )
+
+//go:generate mockery --name Drawer
 
 type Drawer interface {
 	TranslateScale(image.Point, int)
@@ -23,6 +25,8 @@ type Drawer interface {
 	DrawRectangle(image.Rectangle, color.Gray)
 	Label(p image.Point, s string, size int, c color.Gray)
 }
+
+//go:generate mockery --name VectorDrawer
 
 type VectorDrawer interface {
 	Drawer

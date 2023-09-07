@@ -17,8 +17,8 @@ import (
 
 	"log/slog"
 
-	"gihtub.com/formicidae-tracker/tag-layouter/internal/tag"
 	svg "github.com/ajstarks/svgo"
+	"github.com/formicidae-tracker/tag-layouter/internal/tag"
 	"github.com/jessevdk/go-flags"
 	"golang.org/x/image/tiff"
 )
