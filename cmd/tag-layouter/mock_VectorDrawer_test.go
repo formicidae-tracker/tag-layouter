@@ -3,7 +3,6 @@
 package main
 
 import (
-	"log"
 	image "image"
 	color "image/color"
 
@@ -203,9 +202,7 @@ func NewMockVectorDrawer(t interface {
 	mock := &MockVectorDrawer{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() {
-		log.Printf("coucou")
-		mock.AssertExpectations(t) })
+	t.Cleanup(func() { mock.AssertExpectations(t) })
 
 	return mock
 }

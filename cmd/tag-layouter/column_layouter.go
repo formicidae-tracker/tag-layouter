@@ -74,7 +74,6 @@ type Column struct {
 }
 
 func (b PlacedBlock) Render(drawer Drawer, label string) error {
-
 	pb := progressbar.Default(int64(b.FamilyBlock.Len()),
 		fmt.Sprintf("rendering %s", b))
 
@@ -97,11 +96,18 @@ func (b PlacedBlock) Render(drawer Drawer, label string) error {
 		for i := r.Begin; i < end; i++ {
 			b.renderTag(drawer, i, ix, iy, scale, cutLinePos, isFirst)
 			pb.Add(1)
+
+			ix += 1
+			if ix >= b.NTagsPerRow {
+				ix = 0
+				iy += 1
+			}
+
 		}
 	}
 
 	pb.Close()
-	drawer.Label(image.Pt(b.X+b.ActualBorderWidth, b.Y+b.ActualBorderWidth/2),
+	drawer.Label(image.Pt(b.X+b.ActualBorderWidth, b.Y+scale*(b.Family.TotalWidth-b.Family.WidthAtBorder)/2),
 		label, b.ActualTagWidth, color.Gray{0})
 
 	return nil
@@ -125,38 +131,34 @@ func (b PlacedBlock) renderTag(drawer Drawer, idx, ix, iy, scale, cutLinePos int
 	}
 	drawer.EndTranslate()
 
-	ix += 1
-	if ix >= b.NTagsPerRow {
-		ix = 0
-		iy += 1
-	}
-	if b.CutLineWidth == 0 || true {
+	if b.CutLineWidth == 0 {
 		return
 	}
 
 	drawer.DrawRectangle(
 		image.Rect(pos.X+b.ActualTagWidth+cutLinePos, pos.Y,
-			b.CutLineWidth, b.ActualTagWidth),
-		color.Gray{127})
+			pos.X+b.ActualTagWidth+cutLinePos+b.CutLineWidth, pos.Y+b.ActualTagWidth),
+		color.Gray{})
 
 	drawer.DrawRectangle(
 		image.Rect(pos.X, pos.Y+b.ActualTagWidth+cutLinePos,
-			b.ActualTagWidth, b.CutLineWidth),
-		color.Gray{127})
+			pos.X+b.ActualTagWidth, pos.Y+b.ActualTagWidth+cutLinePos+b.CutLineWidth),
+		color.Gray{})
 
 	if ix == 1 || isFirst == true {
 		isFirst = false
 		drawer.DrawRectangle(
 			image.Rect(pos.X-b.CutLineWidth-cutLinePos, pos.Y,
-				b.CutLineWidth, b.ActualTagWidth),
-			color.Gray{127})
+				pos.X-b.CutLineWidth-cutLinePos+b.CutLineWidth,
+				pos.Y+b.ActualTagWidth),
+			color.Gray{})
 	}
 
 	if iy == 0 || iy == 1 && ix <= b.Skips {
 		drawer.DrawRectangle(
 			image.Rect(pos.X, pos.Y-cutLinePos-b.CutLineWidth,
-				b.ActualTagWidth, b.CutLineWidth),
-			color.Gray{127})
+				pos.X+b.ActualTagWidth, pos.Y-cutLinePos-b.CutLineWidth+b.CutLineWidth),
+			color.Gray{})
 	}
 
 }

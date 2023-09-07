@@ -13,6 +13,6 @@ arena-layouter:
 check:
 	make -C internal/tag check
 	make -C cmd/tag-layouter check
-	make -C cmd/tag-layouter check
+	make -C cmd/arena-layouter check
 
 .PHONY: all check tag tag-layouter arena-layouter

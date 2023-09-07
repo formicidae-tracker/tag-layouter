@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"image"
+	"image/color"
 	"testing"
 
 	"github.com/formicidae-tracker/tag-layouter/internal/tag"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -22,7 +25,7 @@ func (s *ColumnLayouterSuite) TearDownTest() {
 }
 
 func TestColumnLayouterSuite(t *testing.T) {
-	fmt.Printf("coucou\n")
+	fmt.Printf("test suite\n")
 	suite.Run(t, new(ColumnLayouterSuite))
 }
 
@@ -36,23 +39,33 @@ func mustFamily(f *tag.Family, err error) *tag.Family {
 	return f
 }
 
-func (s *ColumnLayouterSuite) Test() {
+func (s *ColumnLayouterSuite) TestSingleRow() {
 	block := PlacedBlock{
 		FamilyBlock: tag.FamilyBlock{
 			Family: mustFamily(tag.GetFamily("Standard41h12")),
 			SizeMM: 1.6,
-			Ranges: []tag.Range{{Begin: 1, End: -1}},
+			Ranges: []tag.Range{{Begin: 1, End: 11}},
 		},
-		Height:         100,
-		Width:          100,
-		X:              0,
-		Y:              0,
-		ActualTagWidth: 10,
-		CutLineWidth:   0,
-		NTagsPerRow:    8,
-		Skips:          0,
-		DPI:            300,
+		Height:            400,
+		Width:             400,
+		X:                 0,
+		Y:                 0,
+		ActualTagWidth:    18,
+		ActualBorderWidth: 2,
+		CutLineWidth:      0,
+		NTagsPerRow:       10,
+		Skips:             0,
+		DPI:               300,
 	}
 
-	block.Render(s.drawer, "")
+	var calls []*mock.Call
+	for i := 0; i < 10; i++ {
+		translate := s.drawer.EXPECT().TranslateScale(image.Pt(2+i*20, 2), 2).Return().Once()
+		draw := s.drawer.EXPECT().DrawPolygons(mock.Anything).Return().NotBefore(translate).Once()
+		end := s.drawer.EXPECT().EndTranslate().Return().NotBefore(draw).Once()
+		calls = append(calls, translate, draw, end)
+	}
+	s.drawer.EXPECT().Label(image.Pt(2, 4), "foo", mock.Anything, color.Gray{}).Return().Once().NotBefore(calls...)
+	s.NoError(block.Render(s.drawer, "foo"))
+
 }
