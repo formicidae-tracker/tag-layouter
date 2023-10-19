@@ -1,5 +1,9 @@
-# tag-layouter
-Utility to draw families of tag on a paper sheet
+# FORmicidae Tracker (FORT) : Tag Layouter Program
+[![DOI](https://zenodo.org/badge/200816040.svg)](https://zenodo.org/doi/10.5281/zenodo.10019131)
+
+The [FORmicidae Tracker (FORT)](https://formicidae-tracker.github.io) is an advanced online tracking system designed specifically for studying social insects, particularly ants and bees, FORT utilizes fiducial markers for extended individual tracking. Its key features include real-time online tracking and a modular design architecture that supports distributed processing. The project's current repositories encompass comprehensive hardware blueprints, technical documentation, and associated firmware and software for online tracking and offline data analysis.
+
+This repository host an utility program to draw families of tag on a paper sheet
 
 ## Requirements
 * [go language](http://golang.org/)
