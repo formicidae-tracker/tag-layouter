@@ -57,7 +57,7 @@ layout_one() {
 						   --cpuprofile=test_dlr_v4_${r}_${f}.pprof \
 						   --label-rounded-size \
 						   --columns $columns \
-						   -P 200.02x138.5 \
+						   -P 138.5x200.02 \
 						   --cut-line-ratio 0.01 \
 						   --individual-tag-border 0.2 \
 						   --block-margin 5.0 \
@@ -74,5 +74,4 @@ families="36h10 36h11 Standard41h12"
 sizes="0.5 0.7 0.9 1.1 1.45"
 sizes_queen="$sizes 1.6 2.2"
 
-#layout_one "test_dlr_v4" "$resolutions" "$formats" "Standard41h12 36h11" "0.5 0.7 0.9 1.45" "" "2"
-layout_one "test_dlr_v4" "$resolutions" "$formats" "Standard41h12" "1.45" "" "2"
+layout_one "test_dlr_v4" "$resolutions" "$formats" "Standard41h12 36h11" "0.5 0.7 0.9 1.45" "" "2"

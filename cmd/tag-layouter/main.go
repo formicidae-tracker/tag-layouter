@@ -73,7 +73,6 @@ type App struct {
 	CutLineRatio     float64           `long:"cut-line-ratio" description:"ratio of the border between tags that should be a cut line" default:"0.0"`
 	BlockMargin      float64           `long:"block-margin" description:"margin between families in mm" default:"2.0"`
 	PaperSize        tag.Size          `short:"P" long:"paper-size" description:"Output paper size in mm. format: <width>x<height>" default:"210.0x297.0"`
-	Height           float64           `short:"H" long:"height" description:"Height to use" default:"297"`
 	Margin           float64           `long:"margin" description:"Margnins of the paper in mm" default:"20.0"`
 	LabelRoundedSize bool              `long:"label-rounded-size" description:"Label the rounded size instead of the actual size"`
 	DPI              int               `short:"d" long:"dpi" description:"DPI to use" default:"2400"`
