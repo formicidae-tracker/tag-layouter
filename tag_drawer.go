@@ -57,7 +57,7 @@ func DrawTag(drawer Drawer, tf *TagFamily, payload uint64, x, y, size, angle flo
 
 	if value != nil {
 		sizeInDot := pixelSize * sizeInPX
-		lInDot := 3 * sizeInDot / 2
+		lInDot := 3 * sizeInDot
 		hInDot := int(math.Sqrt(3) / 2.0 * float64(lInDot))
 		x1 := sizeInDot / 2
 		y1 := sizeInDot/2 - 2*hInDot/3
